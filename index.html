@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BTC Listening - Lắng Nghe, Phân Tích Tin Tức Báo Chí và Mạng Xã Hội BTC</title>
+    <meta name="description" content="Hệ thống lắng nghe, phân tích tin tức báo chí và mạng xã hội Bộ Tài chính năm 2026" />
+    <meta property="og:title" content="BTC Listening - Lắng Nghe, Phân Tích Tin Tức Báo Chí và Mạng Xã Hội BTC" />
+    <meta property="og:description" content="Hệ thống lắng nghe, phân tích tin tức báo chí và mạng xã hội Bộ Tài chính năm 2026" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script>
+      // HMR is disabled in AI Studio iframe; ignore Vite client WebSocket connection errors
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event && event.reason;
+        var msg = (reason && (reason.message || reason.stack || String(reason))) || '';
+        if (
+          msg.includes('WebSocket') ||
+          msg.includes('vite') ||
+          msg.includes('closed without opened')
+        ) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        var msg = (event && (event.message || '')) || '';
+        if (msg.includes('WebSocket') || msg.includes('vite')) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="antialiased min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

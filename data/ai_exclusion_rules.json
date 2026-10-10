@@ -1,0 +1,40 @@
+[
+  {
+    "id": "rule_seed_bds_phan_lo",
+    "name": "Chặn tin phân lô bán nền & quảng cáo đất lẻ cá nhân",
+    "userNote": "Các bài viết phân lô bán nền cá nhân, bán đất dịch vụ nông nghiệp không thuộc thẩm quyền và không phản ánh thị trường tài chính vĩ mô.",
+    "category": "bds_quang_cao",
+    "keywords": [
+      "phân lô bán nền",
+      "đất nền giá rẻ",
+      "sổ hồng trao tay",
+      "bán đất vườn",
+      "cắt lỗ đất nền",
+      "đất nền ven đô"
+    ],
+    "createdAt": "2026-09-18T12:55:41.828Z",
+    "hitCount": 95,
+    "isActive": true,
+    "aiExplanation": "Bộ lọc tự động loại trừ các tin rao vặt phân lô bán nền cá nhân, giữ lại tin chính sách đất đai và bất động sản vĩ mô."
+  },
+  {
+    "id": "rule_seed_showbiz_gossip",
+    "name": "Chặn tin đời sống nghệ sĩ & giải trí không liên quan",
+    "userNote": "Chặn các tin showbiz, đời tư người nổi tiếng, giải trí không liên quan hoạt động kinh tế tài chính.",
+    "category": "giai_tri_doi_song",
+    "keywords": [
+      "showbiz",
+      "đám cưới thế kỷ",
+      "sao việt",
+      "hoa hậu",
+      "scandal",
+      "ly hôn sao",
+      "diễn viên",
+      "người mẫu"
+    ],
+    "createdAt": "2026-09-18T12:55:41.828Z",
+    "hitCount": 2035,
+    "isActive": true,
+    "aiExplanation": "Loại bỏ tin tức đời tư và sự kiện giải trí không mang giá trị quản lý tài chính nhà nước."
+  }
+]

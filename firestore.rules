@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Helper Primitives
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // User Preferences & Cross-device sync
+    match /user_preferences/{prefId} {
+      allow read, write, delete: if true;
+    }
+
+    // Custom Keyword Weights & Dictionaries
+    match /custom_keyword_weights/{weightId} {
+      allow read, write, delete: if true;
+    }
+
+    match /custom_dictionaries/{dictId} {
+      allow read, write, delete: if true;
+    }
+
+    // Alert Threshold Configurations (5 Levels)
+    match /alert_threshold_configs/{configId} {
+      allow read, write, delete: if true;
+    }
+
+    // Alert Trigger Rules
+    match /alert_trigger_rules/{ruleId} {
+      allow read, write, delete: if true;
+    }
+
+    // Alert Ignore List & Noise Reduction Rules
+    match /alert_ignore_rules/{ignoreId} {
+      allow read, write, delete: if true;
+    }
+
+    // System Load Configurations
+    match /system_load_configs/{configId} {
+      allow read, write, delete: if true;
+    }
+
+    // Simulation Scenarios & Audit Logs
+    match /simulation_scenarios/{scenarioId} {
+      allow read, write, delete: if true;
+    }
+
+    match /simulation_audit_logs/{logId} {
+      allow read, write, delete: if true;
+    }
+
+    // AI Advisor Chat Sessions
+    match /advisor_sessions/{sessionId} {
+      allow read, write, delete: if true;
+    }
+
+    // Pinned Directives
+    match /pinned_directives/{directiveId} {
+      allow read, write, delete: if true;
+    }
+
+    // Executive User Profiles
+    match /executive_profiles/{profileId} {
+      allow read, write, delete: if true;
+    }
+
+    // Semantic Dictionary Groups
+    match /semantic_dictionary_groups/{groupId} {
+      allow read, write, delete: if true;
+    }
+
+    // Knowledge Base Documents
+    match /knowledge_base_documents/{docId} {
+      allow read, write, delete: if true;
+    }
+
+    match /user_custom_rag_knowledge/{docId} {
+      allow read, write, delete: if true;
+    }
+
+    // Scraped News Archive, Scraped News, Sessions & Violation Dossiers
+    match /scraped_news_archive/{newsId} {
+      allow read, write, delete: if true;
+    }
+
+    match /scraped_news/{newsId} {
+      allow read, write, delete: if true;
+    }
+
+    match /news_scrape_sessions/{sessionId} {
+      allow read, write, delete: if true;
+    }
+
+    match /violation_dossiers/{dossierId} {
+      allow read, write, delete: if true;
+    }
+
+    // AI Feedback Loop
+    match /ai_feedback_loop/{feedbackId} {
+      allow read, write, delete: if true;
+    }
+
+    // Fallback rule for all collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+

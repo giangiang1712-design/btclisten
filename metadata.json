@@ -1,0 +1,8 @@
+{
+  "name": "BTC Listening - Lắng Nghe, Phân Tích Tin Tức Báo Chí và Mạng Xã Hội BTC",
+  "description": "Hệ thống lắng nghe, phân tích tin tức báo chí và mạng xã hội Bộ Tài chính năm 2026",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

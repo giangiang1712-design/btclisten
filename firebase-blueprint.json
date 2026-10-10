@@ -1,0 +1,813 @@
+{
+  "entities": {
+    "advisor_sessions": {
+      "title": "Advisor Chat Sessions",
+      "description": "Stores user consultation sessions with the AI strategic advisor",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "roleId": {
+          "type": "string"
+        },
+        "timeRange": {
+          "type": "string"
+        },
+        "contextArticleTitle": {
+          "type": "string"
+        },
+        "isPinned": {
+          "type": "boolean"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "messages": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "createdAt",
+        "updatedAt",
+        "messages"
+      ]
+    },
+    "pinned_directives": {
+      "title": "Executive Pinned Directives",
+      "description": "Executive meeting conclusions and priority directives",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "tags": {
+          "type": "array"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "category",
+        "timestamp"
+      ]
+    },
+    "executive_profiles": {
+      "title": "Executive User Profile",
+      "description": "Active leadership persona, department and briefing preferences",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "roleId": {
+          "type": "string"
+        },
+        "roleNameVi": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "briefingPreference": {
+          "type": "string"
+        },
+        "prioritySectors": {
+          "type": "array"
+        },
+        "lastUpdated": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "fullName",
+        "roleId",
+        "department"
+      ]
+    },
+    "custom_dictionaries": {
+      "title": "Custom Sentiment & Keyword Dictionary",
+      "description": "Domain-specific financial keywords and custom polarity weights",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "keyword": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string"
+        },
+        "polarity": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "keyword",
+        "weight"
+      ]
+    },
+    "semantic_dictionary_groups": {
+      "title": "Semantic Keyword Groups & Context Rules",
+      "description": "Financial semantic groups with synonyms, sector mapping, and context matching rules (mustIncludeAny, excludeWords, targetAgencies, boostWeight)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "sectorNameVi": {
+          "type": "string"
+        },
+        "primaryKeyword": {
+          "type": "string"
+        },
+        "synonyms": {
+          "type": "array"
+        },
+        "contextRules": {
+          "type": "object"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isBuiltIn": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "sector",
+        "primaryKeyword"
+      ]
+    },
+    "knowledge_base_documents": {
+      "title": "Legal & Regulatory Knowledge Base Documents",
+      "description": "Vietnamese fiscal, tax, customs laws, decrees, circulars and macro context documents for RAG reasoning",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "fileSizeStr": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "contentSnippet": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array"
+        },
+        "agency": {
+          "type": "string"
+        },
+        "isActiveForAI": {
+          "type": "boolean"
+        },
+        "wordCount": {
+          "type": "number"
+        },
+        "extractedEntities": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "summary"
+      ]
+    },
+    "scraped_news_archive": {
+      "title": "Scraped Financial News Archive",
+      "description": "Structured real-time and historical news articles scraped across Vietnamese media channels",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "publishedAt": {
+          "type": "string"
+        },
+        "scrapedAt": {
+          "type": "number"
+        },
+        "timeRange": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "contentSnippet": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "sentiment": {
+          "type": "string"
+        },
+        "sentimentScore": {
+          "type": "number"
+        },
+        "isBrightSpot": {
+          "type": "boolean"
+        },
+        "brightSpotScore": {
+          "type": "number"
+        },
+        "brightSpotReason": {
+          "type": "string"
+        },
+        "isRisk": {
+          "type": "boolean"
+        },
+        "riskScore": {
+          "type": "number"
+        },
+        "riskReason": {
+          "type": "string"
+        },
+        "regulatoryTags": {
+          "type": "array"
+        },
+        "entities": {
+          "type": "array"
+        },
+        "smartCategory": {
+          "type": "string"
+        },
+        "scrapeSessionId": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "url",
+        "source",
+        "scrapedAt",
+        "sector",
+        "sentiment"
+      ]
+    },
+    "news_scrape_sessions": {
+      "title": "Scrape Session Batches",
+      "description": "Audit trails for periodic batch scraping runs",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "dateFormatted": {
+          "type": "string"
+        },
+        "timeRange": {
+          "type": "string"
+        },
+        "totalArticlesFound": {
+          "type": "number"
+        },
+        "newArticlesSaved": {
+          "type": "number"
+        },
+        "duplicatesSkipped": {
+          "type": "number"
+        },
+        "sourcesCovered": {
+          "type": "array"
+        },
+        "sentimentBreakdown": {
+          "type": "object"
+        },
+        "sectorBreakdown": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "totalArticlesFound",
+        "newArticlesSaved"
+      ]
+    },
+    "ai_feedback_loop": {
+      "title": "RLHF Feedback & Correction Loop",
+      "description": "User ratings and corrections for AI chatbot responses to tune RAG weights",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "userPrompt": {
+          "type": "string"
+        },
+        "assistantResponse": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "string"
+        },
+        "errorCategory": {
+          "type": "string"
+        },
+        "userCorrectionText": {
+          "type": "string"
+        },
+        "suggestedKeywords": {
+          "type": "array"
+        },
+        "suggestedLegalDocs": {
+          "type": "array"
+        },
+        "ragLegalCitations": {
+          "type": "array"
+        },
+        "executiveProfileRole": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "messageId",
+        "rating",
+        "timestamp"
+      ]
+    },
+    "alert_threshold_configs": {
+      "title": "Alert Threshold Configuration",
+      "description": "5-Level early warning alert thresholds, risk score limits, domain trust criteria, polling frequencies, and notification policies",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        },
+        "nameVi": {
+          "type": "string"
+        },
+        "badge": {
+          "type": "string"
+        },
+        "priorityLevel": {
+          "type": "string"
+        },
+        "minRiskScore": {
+          "type": "number"
+        },
+        "minCrisisCriteriaCount": {
+          "type": "number"
+        },
+        "pollingFrequencySeconds": {
+          "type": "number"
+        },
+        "minDomainTrustScore": {
+          "type": "number"
+        },
+        "autoBlockFakeNewsSuspicious": {
+          "type": "boolean"
+        },
+        "soundEnabled": {
+          "type": "boolean"
+        },
+        "notifyChannels": {
+          "type": "array"
+        },
+        "standardsCriteria": {
+          "type": "array"
+        },
+        "exclusionRules": {
+          "type": "array"
+        },
+        "scopeDescription": {
+          "type": "string"
+        },
+        "philosophy": {
+          "type": "string"
+        },
+        "actionPlaybook": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "level",
+        "nameVi",
+        "minRiskScore"
+      ]
+    },
+    "alert_trigger_rules": {
+      "title": "Dedicated Alert Trigger Rules",
+      "description": "Custom and system alert trigger rules with keyword matching, negation exceptions, velocity spike gates, and noise filters",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "keywords": {
+          "type": "array"
+        },
+        "negationExceptions": {
+          "type": "array"
+        },
+        "minBuzzScore": {
+          "type": "number"
+        },
+        "minImpactScore": {
+          "type": "number"
+        },
+        "requireVelocitySpike": {
+          "type": "boolean"
+        },
+        "requireTier1": {
+          "type": "boolean"
+        },
+        "sentimentFilter": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "priorityLevel": {
+          "type": "string"
+        },
+        "alertLevel": {
+          "type": "string"
+        },
+        "soundEnabled": {
+          "type": "boolean"
+        },
+        "notifyChannels": {
+          "type": "array"
+        },
+        "category": {
+          "type": "string"
+        },
+        "activationStandard": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "keywords",
+        "enabled"
+      ]
+    },
+    "system_load_configs": {
+      "title": "System Load and Anti-Spam Configuration",
+      "description": "Advanced server throttling, high-intensity mode, domain trust filters, and burst delay parameters",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "highIntensityMode": {
+          "type": "boolean"
+        },
+        "globalMinDomainTrustScore": {
+          "type": "number"
+        },
+        "autoFilterSpamAndFakeNews": {
+          "type": "boolean"
+        },
+        "burstRequestDelayMs": {
+          "type": "number"
+        },
+        "enableAdaptiveThrottling": {
+          "type": "boolean"
+        },
+        "autoBlockUnverifiedSpam": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "globalMinDomainTrustScore",
+        "burstRequestDelayMs"
+      ]
+    },
+    "simulation_scenarios": {
+      "title": "Crisis Spike Simulation Scenarios",
+      "description": "Pre-configured and custom emergency simulation scenarios for testing media alert pipelines",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "triggerName": {
+          "type": "string"
+        },
+        "priorityLevel": {
+          "type": "string"
+        },
+        "alertLevel": {
+          "type": "string"
+        },
+        "article": {
+          "type": "object"
+        },
+        "isCustom": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "triggerName",
+        "priorityLevel",
+        "article"
+      ]
+    },
+    "simulation_audit_logs": {
+      "title": "Simulation Execution Audit Logs",
+      "description": "Audit trails of tested crisis spike simulations and system responses",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scenarioId": {
+          "type": "string"
+        },
+        "scenarioName": {
+          "type": "string"
+        },
+        "alertLevel": {
+          "type": "string"
+        },
+        "articleTitle": {
+          "type": "string"
+        },
+        "executedAt": {
+          "type": "number"
+        },
+        "executedAtFormatted": {
+          "type": "string"
+        },
+        "matchedKeywords": {
+          "type": "array"
+        },
+        "delaySeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "scenarioId",
+        "scenarioName",
+        "executedAt"
+      ]
+    },
+    "alert_ignore_rules": {
+      "title": "Alert Ignore & Noise Reduction Rules",
+      "description": "Whitelisted keyword patterns and routine corporate actions for automatic risk downgrading",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "pattern",
+        "enabled"
+      ]
+    },
+    "custom_keyword_weights": {
+      "title": "Custom Keyword Weight Configuration",
+      "description": "User customized keyword weights and priority scoring factors across MoF policy domains",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "keyword": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string"
+        },
+        "isCoreMof": {
+          "type": "boolean"
+        },
+        "isCustom": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "keyword",
+        "weight"
+      ]
+    },
+    "user_preferences": {
+      "title": "User Preferences and Cloud Sync State",
+      "description": "Persisted custom keyword weights, 5-level alert threshold configurations, alert triggers, and ignore-list for cross-device synchronization",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "keywordWeights": {
+          "type": "object"
+        },
+        "alertThresholdConfig": {
+          "type": "object"
+        },
+        "alertTriggerRules": {
+          "type": "array"
+        },
+        "alertIgnoreRules": {
+          "type": "array"
+        },
+        "syncedAt": {
+          "type": "number"
+        },
+        "syncedAtFormatted": {
+          "type": "string"
+        },
+        "customKeywordsCount": {
+          "type": "number"
+        },
+        "activeTriggersCount": {
+          "type": "number"
+        },
+        "ignoreRulesCount": {
+          "type": "number"
+        },
+        "clientVersion": {
+          "type": "string"
+        },
+        "deviceInfo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "syncedAt"
+      ]
+    }
+  },
+  "securityRules": {
+    "firestore": {
+      "rules": "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}"
+    }
+  }
+}
