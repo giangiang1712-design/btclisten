@@ -1673,3 +1673,46 @@ export interface AiExclusionAnalyzeResponse {
   aiExplanation: string;
 }
 
+export interface ProcessedActionRecord {
+  id: string;
+  articleId: string;
+  title: string;
+  url?: string;
+  source?: string;
+  summary?: string;
+  publishedAt?: string | number;
+  handledAt: string; // ISO string
+  tier: 'C4' | 'C3' | 'C2' | 'C1';
+  importance: 'URGENT' | 'IMPORTANT' | 'MONITORING';
+  directiveLabel: string;
+  handlingStatus: 'DONE';
+  handledBy?: string;
+  solutionSummary?: string;
+  notes?: string;
+  sector?: string;
+}
+
+export type ExpertStance = 'SUPPORT' | 'CRITIQUE' | 'WARNING' | 'NEUTRAL';
+export type ExpertSpeakerType = 'EXPERT' | 'ORGANIZATION';
+
+export interface ExpertOpinionRecord {
+  id: string;
+  articleId?: string;
+  articleTitle: string;
+  articleUrl?: string;
+  source: string;
+  publishedAt: string | number;
+  speakerName: string;
+  speakerRole: string;
+  speakerType: ExpertSpeakerType;
+  organizationName?: string;
+  opinionSummary: string;
+  stance: ExpertStance;
+  policyArea: string;
+  isWatchlist: boolean; // ⭐ Mục đáng lưu tâm
+  mentionCount?: number;
+  statementQuote?: string;
+  manualWatchlistOverride?: boolean;
+  createdAt: string;
+}
+

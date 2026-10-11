@@ -26,6 +26,7 @@ import { ScrapedNewsItem, formatNewsFullDateTime } from '../types';
 import { decodeHtmlEntities } from '../lib/htmlDecoder';
 import { evaluateAndTagSopLevel4 } from '../lib/sentimentCalculator';
 import { isBrightSpotArticle } from '../lib/newsClassification';
+import { isTrulyPositiveArticle } from '../lib/policyFrictionEngine';
 
 export type ExecutiveKpiModalMode = 'URGENT_CRISIS' | 'POSITIVE_BRIGHT';
 
@@ -66,9 +67,9 @@ export const ExecutiveKpiDetailModal: React.FC<ExecutiveKpiDetailModalProps> = (
     });
   }, [articles]);
 
-  // 2. Phân loại bài viết tích cực khởi sắc (Đồng bộ chuẩn 100% với thẻ KPI bên ngoài)
+  // 2. Phân loại bài viết tích cực khởi sắc (Đồng bộ chuẩn 100% với thẻ KPI bên ngoài & Sắc thái dư luận)
   const positiveArticles = useMemo(() => {
-    return articles.filter((item) => isBrightSpotArticle(item));
+    return articles.filter((item) => isTrulyPositiveArticle(item));
   }, [articles]);
 
   const targetArticles = mode === 'URGENT_CRISIS' ? sopEmergencyArticles : positiveArticles;

@@ -13,9 +13,10 @@ import {
   Zap,
 } from 'lucide-react';
 import { ScrapedNewsItem, formatNewsFullDateTime } from '../types';
-import { decodeHtmlEntities } from '../lib/htmlDecoder';
+import { decodeHtmlEntities, cleanHtmlTitle } from '../lib/htmlDecoder';
 import { classifyArticleUrgency } from '../lib/warningPipelineEngine';
 import { isSopLevel4Article } from '../lib/sentimentCalculator';
+import { ExecutiveDirectiveDetailModal } from './ExecutiveDirectiveDetailModal';
 
 interface PriorityPulseProps {
   articles: ScrapedNewsItem[];
@@ -30,7 +31,11 @@ export const PriorityPulse: React.FC<PriorityPulseProps> = ({
   onSelectArticle,
   onDraftStatement,
   onOpenGmailAlertModal,
+  isDark = false,
 }) => {
+  const [pulseDetailArticle, setPulseDetailArticle] = React.useState<ScrapedNewsItem | null>(null);
+  const [handledIds, setHandledIds] = React.useState<Set<string>>(new Set());
+
   const top5NoteworthyArticles = useMemo(() => {
     if (!articles || articles.length === 0) return [];
     
@@ -80,7 +85,7 @@ export const PriorityPulse: React.FC<PriorityPulseProps> = ({
       {/* List of 5 streamlined items */}
       <div className="divide-y divide-slate-200">
         {top5NoteworthyArticles.map((item, index) => {
-          const cleanTitle = decodeHtmlEntities(item.title || '');
+          const cleanTitle = cleanHtmlTitle(item.title, item.summary || item.snippet);
           const agency = item.agencies?.[0] || item.source || 'Bộ Tài chính';
           const classification = classifyArticleUrgency(item);
           const publishedTime = classification.occurredTimeFormatted || formatNewsFullDateTime(item);
@@ -122,7 +127,7 @@ export const PriorityPulse: React.FC<PriorityPulseProps> = ({
                     </span>
                   </div>
                   <h4
-                    onClick={() => onSelectArticle(item)}
+                    onClick={() => setPulseDetailArticle(item)}
                     className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug hover:underline cursor-pointer transition line-clamp-2"
                   >
                     {cleanTitle}
@@ -154,7 +159,7 @@ export const PriorityPulse: React.FC<PriorityPulseProps> = ({
                   )}
 
                   <button
-                    onClick={() => onSelectArticle(item)}
+                    onClick={() => setPulseDetailArticle(item)}
                     className="p-1.5 rounded-lg text-xs font-bold border border-slate-300 bg-slate-100 text-slate-900 hover:bg-slate-200 transition cursor-pointer"
                     title="Xem chi tiết phân tích"
                   >
@@ -176,6 +181,27 @@ export const PriorityPulse: React.FC<PriorityPulseProps> = ({
           );
         })}
       </div>
+
+      {pulseDetailArticle && (
+        <ExecutiveDirectiveDetailModal
+          article={pulseDetailArticle}
+          isOpen={Boolean(pulseDetailArticle)}
+          onClose={() => setPulseDetailArticle(null)}
+          isHandled={handledIds.has(pulseDetailArticle.id)}
+          onToggleHandled={(id) => {
+            setHandledIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            });
+          }}
+          onOpenGmailAlertModal={onOpenGmailAlertModal}
+          onDraftStatement={onDraftStatement}
+          allArticles={articles}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 };

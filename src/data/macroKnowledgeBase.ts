@@ -37,6 +37,26 @@ export interface AdvisoryRoleDefinition {
 
 export const VIETNAM_FINANCIAL_LEGAL_BASE: LegalFrameworkItem[] = [
   {
+    id: 'quy_chuan_thong_tin_tich_cuc_nghi_dinh_376',
+    code: 'Bộ Chuẩn RAG Tiêu chí Nhận định Thông tin Tích cực (NĐ 376/2026/NĐ-CP)',
+    name: 'Quy chuẩn Bộ nhớ RAG: Tiêu chí Nhận định, Phân loại & Lan tỏa Thông tin Tích cực, Điểm sáng Truyền thông Báo chí ngành Tài chính (File tttichcuc.md & NĐ 376)',
+    category: 'QUY_CHE',
+    agency: 'Bộ Tài chính & Ban Chỉ đạo Truyền thông 376',
+    coreHighlights: [
+      'Trụ cột 1 - Kết quả, thành tựu thực chất & Số liệu kinh tế bứt phá: Thu ngân sách nhà nước đạt/vượt tiến độ; giải ngân đầu tư công bứt phá; kiểm soát tốt nợ công; duy trì thặng dư thương mại và thu hút nguồn vốn FDI kỷ lục.',
+      'Trụ cột 2 - Thể chế, Cải cách hành chính & Giảm chi phí tuân thủ: Ban hành chính sách gia hạn/miễn/giảm thuế phí hỗ trợ người dân và doanh nghiệp; mở rộng hóa đơn điện tử máy tính tiền; Hải quan luồng xanh, thông quan nhanh; ứng dụng AI/Big Data vào quản lý thuế và kho bạc.',
+      'Trụ cột 3 - Ổn định Thị trường Tài chính - Tiền tệ & Niềm tin Nhà đầu tư: Tháo gỡ nút thắt nâng hạng thị trường chứng khoán (giao dịch Non-Prefunding theo TT 68); phát hành thành công trái phiếu Chính phủ; ổn định thị trường TPDN và bảo hiểm.',
+      'Trụ cột 4 - Truyền thông Chính sách Chủ động & Dư luận Đồng thuận: Trích dẫn đánh giá tích cực từ các tổ chức quốc tế (WB, IMF, ADB); bài viết báo chí đồng thuận cao với chính sách mới; sự ghi nhận của hiệp hội doanh nghiệp và chính quyền địa phương.',
+      'Bộ tiêu chí Loại trừ Nghiêm ngặt (Strict Exclusion): Loại bỏ hoàn toàn (100%) các bài điểm tin sự kiện lẻ, vụ việc nợ thuế/xử phạt công khai cá nhân; loại bỏ bài viết giật tít tích cực nhưng có nội dung chứa ẩn ý băn khoăn hay phản ánh vướng mắc chính sách (policy friction); triệt tiêu tin tức có Risk Score >= 30 hoặc mang sắc thái tiêu cực/bearish.'
+    ],
+    applicableScenarios: [
+      'Định hướng AI nhận định chuẩn xác sắc thái thông tin tích cực và điểm sáng truyền thông báo chí ngành Tài chính',
+      'Truy xuất RAG đối soát các bài viết truyền thông đạt chuẩn Nghị định 376 để tôn vinh và nhân rộng',
+      'Loại bỏ báo động giả và ngăn chặn các tin tức giật tít giả định (fake positive) xâm nhập hệ thống',
+      'Cung cấp căn cứ lập Báo cáo Tham mưu Điểm sáng Truyền thông định kỳ gửi Lãnh đạo Bộ'
+    ]
+  },
+  {
     id: 'quy_chuan_canh_bao_4_cap_risk_rag',
     code: 'Quy chuẩn Lượng hóa Rủi ro & Đồng bộ 4 Cấp Cảnh báo (NĐ 376)',
     name: 'Quy chuẩn Chỉ lối Phân loại AI & RAG: 4 Cấp độ Cảnh báo SOP (Xa, Sớm, Nhanh, Khẩn cấp) & Công thức Risk Score (docs/risk_score_formula_definition.md)',
@@ -443,22 +463,22 @@ export const SMART_ADVISORY_PROMPTS = [
         icon: '📊',
         title: 'Tham mưu Kịch bản Tăng trưởng GDP, Mô hình Kinh tế & Quý III',
         prompt: 'Phân tích tổng hợp các bài báo về tăng trưởng kinh tế, tăng trưởng GDP, kịch bản tăng trưởng 2 con số, đổi mới mô hình tăng trưởng và tình hình kinh tế quý III (quý 3). Tham mưu các giải pháp tài khóa, đầu tư công và cải cách thể chế thúc đẩy tăng trưởng.',
-        action: 'policy_submission' as const,
-        actionLabel: 'Lập Tờ trình Giải pháp Tăng trưởng'
+        action: 'deep_dive' as const,
+        actionLabel: 'Tham khảo AI'
       },
       {
         icon: '🏛️',
         title: 'Báo cáo Tổng hợp Nhanh & Tham mưu Lãnh đạo Bộ (Toàn diện)',
         prompt: 'Hãy lập Báo cáo Tham mưu Tổng hợp 4 Bước cho Lãnh đạo Bộ Tài chính về toàn bộ diễn biến tin tức, chỉ số tâm lý và các điểm nóng thị trường vừa quét được trong phiên hôm nay.',
-        action: 'policy_submission' as const,
-        actionLabel: 'Lập Tờ trình Tham mưu Lãnh đạo'
+        action: 'deep_dive' as const,
+        actionLabel: 'Tham khảo AI'
       },
       {
         icon: '📰',
         title: 'Thống kê & Đánh giá Nguồn Báo chí Tài chính (24h)',
         prompt: 'Thống kê, tổng hợp tin bài của Báo Đầu tư và các báo chuyên ngành tài chính trong 24 giờ qua; đánh giá tính chất tin tức và áp dụng quy tắc quản lý nhà nước để tham mưu điều hành.',
         action: 'deep_dive' as const,
-        actionLabel: 'Thống kê & Phân tích Chuyên sâu'
+        actionLabel: 'Tham khảo AI'
       }
     ]
   },
@@ -470,14 +490,14 @@ export const SMART_ADVISORY_PROMPTS = [
         title: 'Phân tích Biến động VN-Index & Tiến trình Nâng hạng',
         prompt: 'Phân tích các bài viết về thị trường chứng khoán, động thái khối ngoại và tiến độ gỡ nút thắt nâng hạng thị trường (Thông tư 68/2024/TT-BTC). Đề xuất tham mưu chỉ đạo UBCKNN.',
         action: 'draft_statement' as const,
-        actionLabel: 'Soạn Thông cáo Báo chí AI'
+        actionLabel: 'Tham khảo AI'
       },
       {
         icon: '💳',
         title: 'Rà soát Áp lực Đáo hạn Trái phiếu Doanh nghiệp',
         prompt: 'Đánh giá diễn biến thị trường Trái phiếu Doanh nghiệp (Nghị định 08/NĐ 65) và áp lực thanh khoản của các doanh nghiệp bất động sản trong quý này. Tham mưu giải pháp an toàn hệ thống.',
-        action: 'policy_submission' as const,
-        actionLabel: 'Tạo Tờ trình Cơ chế TPDN'
+        action: 'deep_dive' as const,
+        actionLabel: 'Tham khảo AI'
       }
     ]
   },

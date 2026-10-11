@@ -32,6 +32,7 @@ import { extractQuantitativeBreakdown } from './QuantitativeFormulaBreakdown';
 import { classifyArticleUrgency } from '../lib/warningPipelineEngine';
 import { evaluateAndTagSopLevel4, isEarlyWarningArticle, isDistantWarningArticle } from '../lib/sentimentCalculator';
 import { Decree376ClassificationEngine } from '../lib/decree376ClassificationEngine';
+import { ExecutiveDirectiveDetailModal } from './ExecutiveDirectiveDetailModal';
 
 export type InterventionWarningLevel = 'EMERGENCY' | 'RAPID' | 'EARLY' | 'DISTANT' | 'GAP';
 
@@ -64,6 +65,7 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
   const [activeTab, setActiveTab] = useState<'active' | 'handled'>('active');
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [detailModalArticle, setDetailModalArticle] = useState<ScrapedNewsItem | null>(null);
 
   // Classify each article's intervention profile strictly according to SOP 4-Level and Decree 376
   const enrichedArticles = useMemo(() => {
@@ -153,8 +155,12 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
   const displayedItems = useMemo(() => {
     const sourceList = activeTab === 'active' ? activeItems : handledItems;
     return sourceList.filter((entry) => {
-      if (selectedLevelFilter !== 'ALL' && entry.warningLevel !== selectedLevelFilter) {
-        return false;
+      if (selectedLevelFilter !== 'ALL') {
+        if (selectedLevelFilter === 'MONITORING') {
+          if (entry.warningLevel !== 'EARLY' && entry.warningLevel !== 'DISTANT') return false;
+        } else if (entry.warningLevel !== selectedLevelFilter) {
+          return false;
+        }
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -204,31 +210,25 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
     switch (level) {
       case 'EMERGENCY':
         return {
-          label: '△ Cấp 4: Khẩn cấp (SOP 2-4h)',
+          label: '🚨 Cấp 4: Khẩn cấp (SOP 2-4h)',
           style: 'bg-rose-950 text-rose-200 border-rose-800 font-black',
           timing: 'Khung giờ vàng: 2 – 4 giờ',
           badgeColor: 'text-rose-400',
         };
       case 'RAPID':
         return {
-          label: '◇ Cấp 3: Cảnh báo trực tiếp (12h)',
+          label: '⚡ Cấp 3: Trọng yếu (12h)',
           style: 'bg-amber-950 text-amber-200 border-amber-800 font-black',
           timing: 'Thời hạn xử lý: Trong vòng 12 giờ',
           badgeColor: 'text-amber-400',
         };
       case 'EARLY':
-        return {
-          label: '□ Cấp 2: Cảnh báo sớm (24h)',
-          style: 'bg-blue-950 text-blue-200 border-blue-800 font-bold',
-          timing: 'Kịch bản phòng ngừa: Trong vòng 24 giờ',
-          badgeColor: 'text-blue-400',
-        };
       case 'DISTANT':
         return {
-          label: '○ Cấp 1: Cảnh báo xa (48-72h)',
-          style: 'bg-indigo-950 text-indigo-200 border-indigo-800 font-bold',
-          timing: 'Chu kỳ theo dõi: 48 – 72 giờ',
-          badgeColor: 'text-indigo-400',
+          label: '📌 C1-C2: Theo dõi & Phòng ngừa',
+          style: 'bg-slate-800 text-slate-200 border-slate-700 font-bold',
+          timing: 'Chu kỳ theo dõi: 24 – 48 giờ',
+          badgeColor: 'text-slate-300',
         };
       case 'GAP':
       default:
@@ -344,7 +344,7 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
             </button>
           </div>
 
-          {/* Level count pills: Cấp 4, Cấp 3, Cấp 2, Cấp 1, Khoảng trống */}
+          {/* Level count pills: Cấp 4, Cấp 3, Cấp 1-2, Khoảng trống */}
           <div className="flex items-center gap-1.5 text-xs font-mono font-bold shrink-0 flex-wrap">
             <span
               onClick={() => setSelectedLevelFilter(selectedLevelFilter === 'EMERGENCY' ? 'ALL' : 'EMERGENCY')}
@@ -355,7 +355,7 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
               }`}
               title="Cấp 4: Khẩn cấp (SOP 2-4h, 80-100đ)"
             >
-              <span>△ C4 Khẩn cấp:</span> <strong>{stats.emergencyCount}</strong>
+              <span>🚨 C4 Khẩn cấp:</span> <strong>{stats.emergencyCount}</strong>
             </span>
 
             <span
@@ -365,33 +365,21 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
                   ? 'bg-amber-600 text-white border-amber-500'
                   : 'bg-amber-950/80 text-amber-300 border-amber-800/80 hover:bg-amber-900'
               }`}
-              title="Cấp 3: Cảnh báo trực tiếp (12h, 60-79đ)"
+              title="Cấp 3: Trọng yếu (12h, xét trong 3 ngày qua)"
             >
-              <span>◇ C3 Trực tiếp:</span> <strong>{stats.rapidCount}</strong>
+              <span>⚡ C3 Trọng yếu:</span> <strong>{stats.rapidCount}</strong>
             </span>
 
             <span
-              onClick={() => setSelectedLevelFilter(selectedLevelFilter === 'EARLY' ? 'ALL' : 'EARLY')}
+              onClick={() => setSelectedLevelFilter(selectedLevelFilter === 'MONITORING' ? 'ALL' : 'MONITORING')}
               className={`px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
-                selectedLevelFilter === 'EARLY'
-                  ? 'bg-blue-600 text-white border-blue-500'
-                  : 'bg-blue-950/80 text-blue-300 border-blue-800/80 hover:bg-blue-900'
+                selectedLevelFilter === 'MONITORING'
+                  ? 'bg-slate-700 text-white border-slate-600'
+                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
               }`}
-              title="Cấp 2: Cảnh báo sớm (24h, 40-59đ)"
+              title="Cấp 1 - Cấp 2: Chỉ để ở mức Theo dõi & Phòng ngừa (24-48h)"
             >
-              <span>□ C2 Cảnh báo sớm:</span> <strong>{stats.earlyCount}</strong>
-            </span>
-
-            <span
-              onClick={() => setSelectedLevelFilter(selectedLevelFilter === 'DISTANT' ? 'ALL' : 'DISTANT')}
-              className={`px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
-                selectedLevelFilter === 'DISTANT'
-                  ? 'bg-indigo-600 text-white border-indigo-500'
-                  : 'bg-indigo-950/80 text-indigo-300 border-indigo-800/80 hover:bg-indigo-900'
-              }`}
-              title="Cấp 1: Cảnh báo xa (48-72h, 20-39đ)"
-            >
-              <span>○ C1 Cảnh báo xa:</span> <strong>{stats.distantCount}</strong>
+              <span>📌 C1-C2 Theo dõi:</span> <strong>{stats.earlyCount + stats.distantCount}</strong>
             </span>
 
             {stats.gapCount > 0 && (
@@ -415,11 +403,10 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
             {[
               { id: 'ALL', label: `Tất cả (${activeTab === 'active' ? stats.active : stats.handled})` },
-              { id: 'EMERGENCY', label: `🚨 Cấp 4: Khẩn cấp (${stats.emergencyCount})` },
-              { id: 'RAPID', label: `⚡ Cấp 3: Trực tiếp (${stats.rapidCount})` },
-              { id: 'EARLY', label: `⏳ Cấp 2: Cảnh báo sớm (${stats.earlyCount})` },
-              { id: 'DISTANT', label: `🔭 Cấp 1: Cảnh báo xa (${stats.distantCount})` },
-              { id: 'GAP', label: `❓ Khoảng trống thông tin (${stats.gapCount})` },
+              { id: 'EMERGENCY', label: `🚨 C4: Khẩn cấp (${stats.emergencyCount})` },
+              { id: 'RAPID', label: `⚡ C3: Trọng yếu (${stats.rapidCount})` },
+              { id: 'MONITORING', label: `📌 C1-C2: Theo dõi & Phòng ngừa (${stats.earlyCount + stats.distantCount})` },
+              ...(stats.gapCount > 0 ? [{ id: 'GAP', label: `❓ Khoảng trống thông tin (${stats.gapCount})` }] : []),
             ].map(({ id, label }) => {
               const isSelected = selectedLevelFilter === id;
               return (
@@ -585,7 +572,7 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
                   {/* Article Title */}
                   <div>
                     <h4
-                      onClick={() => onSelectArticle(article)}
+                      onClick={() => setDetailModalArticle(article)}
                       className="text-sm sm:text-base font-black text-white hover:text-amber-400 cursor-pointer transition leading-snug"
                     >
                       {cleanTitle}
@@ -637,7 +624,7 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
                   <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap text-xs">
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
-                        onClick={() => onSelectArticle(article)}
+                        onClick={() => setDetailModalArticle(article)}
                         className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition flex items-center gap-1 cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5 text-slate-400" />
@@ -705,6 +692,21 @@ export const InterventionManagementModal: React.FC<InterventionManagementModalPr
           </button>
         </div>
       </div>
+
+      {/* MODAL 3 PHẦN CHÍNH YẾU SINH BỞI AI CHO LÃNH ĐẠO */}
+      {detailModalArticle && (
+        <ExecutiveDirectiveDetailModal
+          article={detailModalArticle}
+          isOpen={Boolean(detailModalArticle)}
+          onClose={() => setDetailModalArticle(null)}
+          isHandled={handledArticleIds.has(detailModalArticle.id)}
+          onToggleHandled={(id) => onToggleHandled(id)}
+          onOpenGmailAlertModal={onOpenGmailAlertModal}
+          onDraftStatement={onDraftStatement}
+          allArticles={articles}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 };

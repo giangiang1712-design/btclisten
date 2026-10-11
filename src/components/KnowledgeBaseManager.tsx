@@ -78,6 +78,21 @@ export interface UserKnowledgeDocument {
 
 const DEFAULT_DOCUMENTS: UserKnowledgeDocument[] = [
   {
+    id: 'doc-tieu-chi-thong-tin-tich-cuc-376',
+    title: 'Cẩm nang RAG: Tiêu chuẩn Nhận định & Phân loại Thông tin Tích cực ngành Tài chính (Nghị định 376/2026/NĐ-CP & tttichcuc.md)',
+    category: 'LEGAL',
+    fileName: 'Tieu_Chuan_Nhan_Dinh_Thong_Tin_Tich_Cuc_ND_376.pdf',
+    fileSizeStr: '1.7 MB',
+    uploadedAt: 'Hệ thống chuẩn hóa',
+    summary: 'Bộ quy chuẩn RAG nhận định chính xác thông tin tích cực và điểm sáng truyền thông: 4 nhóm trụ cột thành tựu (Thu ngân sách, Cải cách thuế/hải quan, Nâng hạng TTCK, Đánh giá WB/IMF) và quy tắc loại trừ 100% tin tức giật tít giả định hay sự kiện nợ thuế lẻ.',
+    contentSnippet: 'TRÍCH LƯỢC CẨM NANG RAG NHẬN ĐỊNH THÔNG TIN TÍCH CỰC THEO NGHỊ ĐỊNH 376/2026/NĐ-CP:\n1. TÍNH THỰC CHẤT KINH TẾ: Bài viết phải ghi nhận số liệu thành tựu tài khoa rõ ràng (vượt thu ngân sách, bứt phá giải ngân đầu tư công, duy trì xuất siêu, nợ công an toàn).\n2. THỂ CHẾ VÀ CẢI CÁCH: Ghi nhận chính sách gia hạn/miễn/giảm thuế phí hỗ trợ người dân, doanh nghiệp; thông quan luồng xanh, hóa đơn điện tử máy tính tiền, ứng dụng AI.\n3. THỊ TRƯỜNG & NIỀM TIN: Tháo gỡ nút thắt nâng hạng chứng khoán (Non-Prefunding TT 68), phát hành thành công TPCP, ổn định TPDN.\n4. ĐÁNH GIÁ TÍCH CỰC QUỐC TẾ & ĐỒNG THUẬN: WB, IMF, ADB đánh giá cao; chính quyền địa phương & doanh nghiệp ghi nhận tháo gỡ vướng mắc.\n5. QUY TẮC LOẠI TRỪ NGHIÊM NGẶT (STRICT EXCLUSION): Triệt tiêu 100% các tin điểm tin vụ việc nợ thuế/xử phạt cá nhân đơn lẻ; bài viết giật tít tích cực nhưng nội dung phản ánh băn khoăn vướng mắc (policy friction); bài viết có Risk Score >= 30 hoặc mang sắc thái tiêu cực (bearish).',
+    tags: ['Thông tin tích cực', 'tttichcuc.md', 'Nghị định 376', 'Điểm sáng truyền thông', 'Thành tựu tài khóa', 'Cải cách thuế', 'Bộ nhớ RAG'],
+    agency: 'Bộ Tài chính & Ban Chỉ đạo 376',
+    isActiveForAI: true,
+    wordCount: 12500,
+    extractedEntities: ['Bộ Tài chính', 'Ban Chỉ đạo 376', 'Tổng cục Thuế', 'Tổng cục Hải quan', 'UBCKNN', 'WB', 'IMF']
+  },
+  {
     id: 'doc-luat-ql-thue-38',
     title: 'Luật Quản lý Thuế số 38/2019/QH14 & Nghị định 126/2020/NĐ-CP',
     category: 'LEGAL',

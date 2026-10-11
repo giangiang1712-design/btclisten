@@ -17,6 +17,8 @@ import * as cheerio from 'cheerio';
 import fs from 'fs';
 import { finetuneRouter } from './server/finetuneManager';
 import { semanticDictionaryRouter, semanticDictionaryEngine } from './server/semanticDictionaryManager';
+import { processedActionsRouter, processedActionsManager } from './server/processedActionsManager';
+import { expertOpinionsRouter, expertOpinionsManager } from './server/expertOpinionsManager';
 import { OFFICIAL_150_SOURCES, matchArticleToOfficial150Source, OFFICIAL_DOMAIN_MAP, OfficialSourceDefinition } from './src/lib/official150Sources';
 import { evaluateDomainTrust } from './src/lib/domainTrustService';
 import { aiExclusionManager } from './server/aiExclusionManager';
@@ -33,6 +35,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/finetune', finetuneRouter);
 app.use('/api/semantic-dictionary', semanticDictionaryRouter);
+app.use('/api/processed-actions', processedActionsRouter);
+app.use('/api/expert-opinions', expertOpinionsRouter);
 
 // Helper to get formatted Vietnam Time (UTC+7)
 function getVietnamTimeNow() {
@@ -691,7 +695,10 @@ function isServerIndividualTaxCrimeOrRoutineEnforcement(text: string): boolean {
   const isPrivateTaxEvasion = 
     /bán đất .* khai .* trốn thuế|khai man giá đất|kê khai giá chuyển nhượng|trốn thuế khi chuyển nhượng|trốn thuế.*(bán đất|bất động sản|nhà đất)|bị khởi tố về hành vi trốn thuế|khởi tố bị can về tội trốn thuế|khởi tố về tội trốn thuế|khởi tố hành vi trốn thuế|tội trốn thuế|hành vi trốn thuế/i.test(t) ||
     (t.includes('trốn thuế') && (t.includes('khởi tố') || t.includes('bị can') || t.includes('tạm giam') || t.includes('bán đất') || t.includes('chuyển nhượng') || t.includes('hợp đồng công chứng') || t.includes('kê khai') || t.includes('hai giá'))) ||
-    /buôn lậu.*bị bắt|bắt giữ vụ buôn lậu|thu giữ hàng lậu|bắt quả tang buôn lậu|xử phạt hành chính về thuế/i.test(t);
+    /buôn lậu.*bị bắt|bắt giữ vụ buôn lậu|thu giữ hàng lậu|bắt quả tang buôn lậu|xử phạt hành chính về thuế/i.test(t) ||
+    /tăng nhật tuệ.*nợ thuế|lý thùy chang.*chi bảo.*nợ|bgi group bị phạt và truy thu|bgi group.*truy thu.*thuế|truy thu gần \d+ tỷ đồng tiền thuế|công ty .* nợ thuế \d+|nợ hơn \d+ tỉ/i.test(t) ||
+    /loạt bài:.*bài \d+:|giải ngân đầu tư công - không chỉ là câu chuyện tỷ lệ|để đầu tư công tạo "lực k(éo|héo)"/i.test(t) ||
+    /tái cơ cấu evn: hai bộ vênh nhau|lộ trình tách truyền tải.*bán lẻ/i.test(t);
 
   return Boolean(isPrivateTaxEvasion);
 }
@@ -9700,6 +9707,11 @@ Trả về kết quả ĐÚNG ĐỊNH DẠNG JSON thuần túy (không bọc mar
 
     // 1. Database Persistence: Ingest newly scraped articles into persistent database & load full consolidated list
     articleDbManager.ingestArticles(combinedArticles, sector);
+    try {
+      expertOpinionsManager.scanArticlesForOpinions(combinedArticles);
+    } catch (opErr) {
+      console.warn('[ExpertOpinions] Warning scanning opinions:', opErr);
+    }
     let allDbArticles = articleDbManager.getAllArticles();
 
     // 2. Pure Vietnamese & Financial Filter
@@ -13985,10 +13997,8 @@ function generateDynamicAdvisorFallback(
   const lowerQ = lastUserMsg.toLowerCase();
 
   let recommendTag = '[RECOMMEND_ACTION:deep_dive]';
-  if (lowerQ.includes('tin đồn') || lowerQ.includes('thông cáo') || lowerQ.includes('phát ngôn') || lowerQ.includes('báo chí') || lowerQ.includes('khủng hoảng')) {
+  if (lowerQ.includes('tin đồn') || lowerQ.includes('thông cáo') || lowerQ.includes('phát ngôn') || lowerQ.includes('báo chí') || lowerQ.includes('khủng hoảng') || lowerQ.includes('tờ trình') || lowerQ.includes('sửa đổi') || lowerQ.includes('chính sách')) {
     recommendTag = '[RECOMMEND_ACTION:draft_statement]';
-  } else if (lowerQ.includes('tờ trình') || lowerQ.includes('sửa đổi') || lowerQ.includes('nghị định') || lowerQ.includes('thông tư') || lowerQ.includes('chính sách')) {
-    recommendTag = '[RECOMMEND_ACTION:policy_submission]';
   }
 
   // TÍCH HỢP CHUYÊN BIỆT: NGHỊ ĐỊNH 376/2026/NĐ-CP (34 ĐƠN VỊ & 5 THẨM QUYỀN MỚI)
@@ -14015,8 +14025,8 @@ function generateDynamicAdvisorFallback(
     text += `## 4. KIẾN NGHỊ THAM MƯU CHO LÃNH ĐẠO BỘ\n\n`;
     text += `1. Rà soát, ban hành quyết định quy định cụ thể chức năng, nhiệm vụ của 5 cơ quan tiếp nhận thẩm quyền mới.\n`;
     text += `2. Ban hành quy chế phối hợp công tác giữa các Cục/Vụ truyền thống với các đơn vị mới để giải quyết kịp thời phản ánh của cử tri và báo chí.\n`;
-    text += `3. Khởi tạo Tờ trình hoặc Thông cáo báo chí tương ứng khi có sự vụ phát sinh.\n\n`;
-    text += `[RECOMMEND_ACTION:policy_submission]`;
+    text += `3. Khởi tạo Thông cáo hoặc Phương án tham mưu tương ứng khi có sự vụ phát sinh.\n\n`;
+    text += `[RECOMMEND_ACTION:draft_statement]`;
     return text;
   }
 
@@ -14081,10 +14091,10 @@ function generateDynamicAdvisorFallback(
   text += `- **Cơ sở pháp lý bám sát:** Tuân thủ quy định về công tác văn thư hành chính, Quy chế phát ngôn của Bộ Tài chính và Luật Ban hành VBQPPL.\n`;
   text += `- **Phân định thẩm quyền:** Đơn vị chuyên môn trực thuộc (Cục Thuế và Thuế địa phương, UBCKNN, Tổng cục Hải quan, Kho bạc Nhà nước, v.v.) chịu trách nhiệm chính về mặt kỹ thuật/nghiệp vụ và tham mưu Lãnh đạo Bộ quyết định.\n\n`;
 
-  text += `## 4. ĐỀ XUẤT GIẢI PHÁP THAM MƯU TÁC CHIẾN\n\n`;
-  text += `1. **Về công tác Truyền thông & Định hướng:** Cung cấp thông tin chính thống, kịp thời qua các kênh báo chí và cổng thông tin điện tử của Bộ (sử dụng tính năng **Tạo Thông cáo Báo chí** khi cần ra thông cáo b/c định hướng).\n`;
-  text += `2. **Về công tác Điều hành Nghiệp vụ:** Soạn thảo văn bản chỉ đạo hoặc lập Tờ trình trình Lãnh đạo Bộ phê duyệt các giải pháp tháo gỡ khó khăn (sử dụng tính năng **Lập Tờ trình Lãnh đạo**).\n`;
-  text += `3. **Kích hoạt công cụ hỗ trợ AI:** Anh/Chị có thể bấm chọn nút thao tác nhanh bên dưới để khởi tạo ngay Modal nghiệp vụ tương ứng.\n\n`;
+  text += `## 4. GIẢI PHÁP THỰC THI TÍCH HỢP AI (KHUYẾN NGHỊ TÁC CHIẾN)\n\n`;
+  text += `1. **Tự động hóa phân tích & Giám sát thời thực:** Tích hợp AI rà soát đa nguồn, đo lường tự động mức độ tác động và tính xác thực của thông tin liên quan.\n`;
+  text += `2. **Tích hợp giải pháp phản ứng & Định hướng:** AI tự động tổng hợp thông điệp đính chính hoặc dự thảo báo cáo tham mưu điều hành gửi Lãnh đạo Bộ.\n`;
+  text += `3. **Thực thi quy trình tác chiến:** Anh/Chị có thể bấm chọn nút **Tham khảo AI** bên dưới để kích hoạt quy trình xử lý tự động.\n\n`;
 
   text += `${recommendTag}`;
 
@@ -14258,6 +14268,7 @@ KHO TRI THỨC PHÁP LÝ & CĂN CỨ VĨ MÔ TÍCH HỢP SẴN:
 5. **Nghị định 24/2012/NĐ-CP**: Quản lý thị trường vàng, hóa đơn điện tử từng lần mua bán vàng, thu hẹp chênh lệch giá.
 6. **Luật Ngân sách Nhà nước 83/2015/QH13**: Kỷ luật tài khóa, trần bội chi < 3.8% GDP, giải ngân vốn đầu tư công.
 7. **Nghị định số 376/2026/NĐ-CP của Chính phủ**: Quy định toàn diện chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của Bộ Tài chính Việt Nam (34 cơ quan, đơn vị trực thuộc và 5 lĩnh vực thẩm quyền mới).
+8. **Bộ tri thức RAG Tiêu chuẩn Nhận định Thông tin Tích cực (File tttichcuc.md & NĐ 376)**: Bám sát 4 Trụ cột thành tựu tài khóa, cải cách thể chế/thuế/hải quan, nâng hạng TTCK và đánh giá tích cực từ WB/IMF/ADB/doanh nghiệp; loại bỏ 100% tin tiêu cực, rủi ro (Risk Score >= 30), vụ việc nợ thuế/xử phạt đơn lẻ hay giật tít giả định.
 
 [CƠ CẤU TỔ CHỨC 34 ĐƠN VỊ & 5 LĨNH VỰC THẨM QUYỀN MỚI THEO NGHỊ ĐỊNH 376/2026/NĐ-CP (DECREE 376 DIRECTIVE)]:
 Bộ Tài chính vận hành theo cơ cấu tổ chức mới nhất quy định tại Điều 3 Nghị định 376/2026/NĐ-CP gồm chính xác 34 đơn vị trực thuộc và tích hợp 5 lĩnh vực thẩm quyền mới:
@@ -14410,7 +14421,13 @@ Yêu cầu: Trả lời bằng tiếng Việt chuyên nghiệp, trực diện, m
             break;
           }
         } catch (geminiErr: any) {
-          console.warn(`[Advisor Stream] Model ${model} stream attempt failed or timed out:`, geminiErr?.message || geminiErr);
+          const errStr = String(geminiErr?.message || geminiErr || '');
+          const is429 = geminiErr?.status === 429 || geminiErr?.error?.code === 429 || errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('quota');
+          if (is429) {
+            console.log(`[Advisor Stream] Model ${model} rate limited or quota reached. Trying next model candidate...`);
+          } else {
+            console.log(`[Advisor Stream] Model ${model} stream attempt failed (${errStr.slice(0, 100)}). Trying next candidate...`);
+          }
           if (accumulatedText.length > 50) {
             streamedSuccess = true;
             break;
@@ -14439,27 +14456,24 @@ Yêu cầu: Trả lời bằng tiếng Việt chuyên nghiệp, trực diện, m
       let suggestedAction: string | null = null;
       let actionLabel: string | undefined;
 
-      if (accumulatedText.includes('[RECOMMEND_ACTION:draft_statement]')) {
+      if (accumulatedText.includes('[RECOMMEND_ACTION:draft_statement]') || accumulatedText.includes('[RECOMMEND_ACTION:policy_submission]')) {
         suggestedAction = 'draft_statement';
-        actionLabel = 'Mở Modal Soạn Thông cáo AI';
-      } else if (accumulatedText.includes('[RECOMMEND_ACTION:policy_submission]')) {
-        suggestedAction = 'policy_submission';
-        actionLabel = 'Mở Modal Lập Tờ trình AI';
+        actionLabel = 'Tham khảo AI';
       } else if (accumulatedText.includes('[RECOMMEND_ACTION:deep_dive]')) {
         suggestedAction = 'deep_dive';
-        actionLabel = 'Mở Modal Phân tích Chuyên sâu';
+        actionLabel = 'Tham khảo AI';
       } else if (accumulatedText.includes('[RECOMMEND_ACTION:trigger_config]')) {
         suggestedAction = 'trigger_config';
-        actionLabel = 'Cấu hình Ngưỡng Cảnh báo';
+        actionLabel = 'Tham khảo AI';
       } else if (accumulatedText.includes('[RECOMMEND_ACTION:gmail_alert]')) {
         suggestedAction = 'gmail_alert';
-        actionLabel = 'Gửi Gmail Cảnh báo Lãnh đạo';
+        actionLabel = 'Tham khảo AI';
       } else if (accumulatedText.includes('[RECOMMEND_ACTION:smart_filter_policy]')) {
         suggestedAction = 'smart_filter_policy';
-        actionLabel = 'Lọc Tin Thể chế & Chính sách';
+        actionLabel = 'Tham khảo AI';
       } else if (accumulatedText.includes('[RECOMMEND_ACTION:smart_filter_public]')) {
         suggestedAction = 'smart_filter_public';
-        actionLabel = 'Lọc Tin Nguyện vọng Dân/DN';
+        actionLabel = 'Tham khảo AI';
       }
 
       sendEvent({
@@ -14685,19 +14699,19 @@ Yêu cầu: Trả lời bằng tiếng Việt chuyên nghiệp, trực diện, m
 
     if (replyText.includes('[RECOMMEND_ACTION:draft_statement]')) {
       suggestedAction = 'draft_statement';
-      actionLabel = 'Mở Modal Soạn Thông cáo AI';
+      actionLabel = 'Tham khảo AI';
       replyText = replyText.replace(/\[RECOMMEND_ACTION:draft_statement\]/g, '').trim();
     } else if (replyText.includes('[RECOMMEND_ACTION:policy_submission]')) {
-      suggestedAction = 'policy_submission';
-      actionLabel = 'Mở Modal Lập Tờ trình AI';
+      suggestedAction = 'draft_statement';
+      actionLabel = 'Tham khảo AI';
       replyText = replyText.replace(/\[RECOMMEND_ACTION:policy_submission\]/g, '').trim();
     } else if (replyText.includes('[RECOMMEND_ACTION:deep_dive]')) {
       suggestedAction = 'deep_dive';
-      actionLabel = 'Mở Modal Phân tích Chuyên sâu';
+      actionLabel = 'Tham khảo AI';
       replyText = replyText.replace(/\[RECOMMEND_ACTION:deep_dive\]/g, '').trim();
     } else if (replyText.includes('[RECOMMEND_ACTION:trigger_config]')) {
       suggestedAction = 'trigger_config';
-      actionLabel = 'Cấu hình Ngưỡng Cảnh báo';
+      actionLabel = 'Tham khảo AI';
       replyText = replyText.replace(/\[RECOMMEND_ACTION:trigger_config\]/g, '').trim();
     }
 
@@ -14714,7 +14728,7 @@ Yêu cầu: Trả lời bằng tiếng Việt chuyên nghiệp, trực diện, m
       success: true,
       reply: dynamicReply,
       suggestedAction: 'deep_dive',
-      actionLabel: 'Mở Modal Phân tích Chuyên sâu'
+      actionLabel: 'Tham khảo AI'
     });
   }
 });
@@ -15619,6 +15633,9 @@ async function runBackgroundNewsPoll() {
     const freshlyScraped = await fetchDirectFinancialFeeds('all', '', '24h');
     if (freshlyScraped && freshlyScraped.length > 0) {
       const dbResult = articleDbManager.ingestArticles(freshlyScraped, 'all');
+      try {
+        expertOpinionsManager.scanArticlesForOpinions(freshlyScraped);
+      } catch (_) {}
       console.log(`[Smart Poller] Successfully ingested ${freshlyScraped.length} articles. Total DB Size: ${dbResult.length}`);
     }
   } catch (err: any) {

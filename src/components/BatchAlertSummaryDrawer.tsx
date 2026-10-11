@@ -609,10 +609,8 @@ export const BatchAlertSummaryDrawer: React.FC<BatchAlertSummaryDrawerProps> = (
                             <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
                             <span>
                               {isLoadingAi
-                                ? 'Gemini 3.8 Flash đang suy luận đa chiều...'
-                                : aiData?.source === 'gemini-3.8-flash'
-                                ? '✨ Đã phân tích chuyên sâu bởi Gemini 3.8 Flash'
-                                : 'AI Phân tích đa chiều bản tin tài chính'}
+                                ? 'AI đang suy luận...'
+                                : 'Tham khảo AI'}
                             </span>
                           </div>
 
@@ -621,7 +619,7 @@ export const BatchAlertSummaryDrawer: React.FC<BatchAlertSummaryDrawerProps> = (
                             onClick={() => handleRunAiAnalysis(alert, true)}
                             disabled={isLoadingAi}
                             className="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition flex items-center gap-1.5 cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 disabled:opacity-50"
-                            title="Yêu cầu Gemini 3.8 Flash phân tích lại đa chiều và bóc tách thực tế"
+                            title="Tham khảo AI phân tích lại"
                           >
                             <RefreshCw className={`w-3 h-3 ${isLoadingAi ? 'animate-spin' : ''}`} />
                             <span>{isLoadingAi ? 'Đang phân tích...' : 'Làm mới bằng AI'}</span>

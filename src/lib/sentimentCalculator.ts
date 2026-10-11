@@ -1,4 +1,5 @@
 import { ScrapedNewsItem } from '../types';
+import { isTrulyPositiveArticle } from './policyFrictionEngine';
 
 export interface SentimentShiftBreakdown {
   baselineScore: number;
@@ -154,7 +155,7 @@ export function calculateSopSentimentShift(articles: ScrapedNewsItem[]): Sentime
           ? 'Trừ 3 điểm (Tín hiệu cảnh báo sớm mức độ cao)'
           : 'Trừ 2 điểm (Tín hiệu cảnh báo sớm tiêu chuẩn)',
       });
-    } else if (item.sentiment === 'bullish') {
+    } else if (isTrulyPositiveArticle(item)) {
       positiveCount += 1;
     } else if (item.sentiment === 'bearish') {
       // Negative sentiment article without specific SOP penalty

@@ -42,7 +42,7 @@ export interface HybridRagResult {
     category: 'chinh_sach' | 'dan_doanh_nghiep' | 'thi_truong_von' | 'khung_hoang_truyen_thong' | 'tong_hop_vi_mo' | 'thue_hai_quan';
     urgencyLevel: 'low' | 'medium' | 'high' | 'critical';
     primarySectors: string[];
-    actionTypeSuggested: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'gmail_alert' | 'impact_chain' | null;
+    actionTypeSuggested: 'draft_statement' | 'deep_dive' | 'gmail_alert' | 'impact_chain' | null;
     isTaxSpecific?: boolean;
     isCustomsSpecific?: boolean;
   };
@@ -121,7 +121,15 @@ const DOMAIN_KEYWORD_WEIGHTS: Record<string, { weight: number; sector: string; i
   'that thiet': { weight: 2.2, sector: 'crisis', isPublicConcern: true },
   'dinh chinh': { weight: 2.0, sector: 'crisis', isPolicy: true },
 
-  // 4 Warning Tiers, SOP, and RAG Guidance Keywords
+  // 4 Warning Tiers, SOP, Positive Media Framework & RAG Guidance Keywords
+  'thong tin tich cuc': { weight: 2.8, sector: 'macro', isPolicy: true },
+  'tttichcuc': { weight: 3.0, sector: 'macro', isPolicy: true },
+  'tieu chi tich cuc': { weight: 2.7, sector: 'macro', isPolicy: true },
+  'diem sang truyen thong': { weight: 2.6, sector: 'macro', isPolicy: true },
+  'bo nho rag tich cuc': { weight: 2.8, sector: 'macro', isPolicy: true },
+  'nghi dinh 376 tich cuc': { weight: 3.0, sector: 'macro', isPolicy: true },
+  'vuot thu ngan sach': { weight: 2.4, sector: 'budget', isPolicy: true },
+  'gia han thue': { weight: 2.2, sector: 'tax', isPolicy: true },
   'canh bao xa': { weight: 2.3, sector: 'macro', isPolicy: true },
   'canh bao som': { weight: 2.3, sector: 'macro', isPolicy: true },
   'canh bao nhanh': { weight: 2.5, sector: 'crisis', isPolicy: true },
@@ -190,7 +198,7 @@ export function detectQueryIntent(query: string, options: { targetCategory?: str
     intentCategory = 'thue_hai_quan';
     urgencyLevel = 'high';
     actionSuggested = normalizedQuery.includes('to trinh') || normalizedQuery.includes('sua doi')
-      ? 'policy_submission'
+      ? 'deep_dive'
       : 'deep_dive';
     if (queryDomain.isTaxSpecific) detectedSectors.add('tax');
     if (queryDomain.isCustomsSpecific) detectedSectors.add('customs');
@@ -217,7 +225,7 @@ export function detectQueryIntent(query: string, options: { targetCategory?: str
   ) {
     intentCategory = 'chinh_sach';
     urgencyLevel = 'medium';
-    actionSuggested = 'policy_submission';
+    actionSuggested = 'deep_dive';
   } else if (
     normalizedQuery.includes('chung khoan') ||
     normalizedQuery.includes('vn index') ||

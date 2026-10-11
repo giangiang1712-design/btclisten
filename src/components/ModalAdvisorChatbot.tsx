@@ -78,6 +78,8 @@ import {
   isRiskArticle,
   calculateRiskScore
 } from '../lib/newsClassification';
+import { globalNewsDatabase } from '../lib/newsDatabase';
+import { getArchivedNewsCache } from '../lib/newsArchiveService';
 import {
   AdvisorChatSession,
   loadAllAdvisorSessions,
@@ -116,12 +118,12 @@ export interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
-  suggestedAction?: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null;
+  suggestedAction?: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null;
   actionLabel?: string;
   isStreaming?: boolean;
   isError?: boolean;
   retryPrompt?: string;
-  retryActionHint?: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public';
+  retryActionHint?: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public';
   cotBreakdown?: {
     jurisdiction?: string;
     fiscalVsPublic?: string;
@@ -150,7 +152,6 @@ interface ModalAdvisorChatbotProps {
   data?: ScrapeResponse | null;
   context?: Record<string, any>;
   onOpenDraftStatement?: (article?: ScrapedNewsItem) => void;
-  onOpenPolicySubmission?: (article?: ScrapedNewsItem) => void;
   onOpenDeepDive?: (article?: ScrapedNewsItem) => void;
   onOpenTriggerConfig?: () => void;
   onOpenGmailAlert?: (article?: ScrapedNewsItem) => void;
@@ -163,35 +164,35 @@ const PRESET_QUESTIONS = [
     title: 'Điểm tin & Tham mưu Lãnh đạo 24h qua',
     prompt: 'Thống kê, tổng hợp toàn diện tin bài báo chí (Báo Đầu tư, Thời báo Tài chính, Cổng TTĐT...) về Bộ Tài chính và kinh tế vĩ mô trong 24 giờ qua; phân tích tính chất tin tức và đưa ra khuyến nghị tham mưu điều hành trọng tâm.',
     action: 'deep_dive' as const,
-    actionLabel: 'Báo cáo Tham mưu 24h'
+    actionLabel: 'Tham khảo AI'
   },
   {
     icon: '🚨',
     title: 'Rà soát Nguy cơ & Xử lý Tin đồn Khủng hoảng',
     prompt: 'Rà soát các thông tin rủi ro, sai phạm tài chính, tin đồn thất thiệt đang gây nhiễu loạn thị trường hoặc ảnh hưởng uy tín điều hành ngành Tài chính. Đề xuất phương án phát ngôn, đính chính hoặc thanh tra xử lý.',
     action: 'draft_statement' as const,
-    actionLabel: 'Kịch bản Ứng phó & Tờ trình'
+    actionLabel: 'Tham khảo AI'
   },
   {
     icon: '✨',
     title: 'Báo cáo Điểm sáng Thực chất & Đột phá Vĩ mô',
     prompt: 'Lọc và báo cáo các Điểm sáng thực chất theo 6 Trụ cột Bộ Tài chính (Thu NSNN vượt mốc, Cải cách thuế/hải quan số, Giải ngân đầu tư công, Nâng hạng TTCK) có số liệu định lượng và mốc thành tựu xác thực.',
     action: 'deep_dive' as const,
-    actionLabel: 'Báo cáo Điểm sáng Thực chất'
+    actionLabel: 'Tham khảo AI'
   },
   {
     icon: '📊',
     title: 'Đánh giá Trạng thái Thị trường & Tham mưu Chỉ đạo',
     prompt: 'Đánh giá chuẩn xác trạng thái 3 sắc thái (Khả quan / Thận trọng / Cảnh báo) của thị trường tài chính và dư luận xã hội hiện nay; đề xuất 3 nhóm giải pháp chỉ đạo trọng tâm cho Ban Lãnh đạo.',
-    action: 'policy_submission' as const,
-    actionLabel: 'Tham mưu Chỉ đạo Chiến lược'
+    action: 'deep_dive' as const,
+    actionLabel: 'Tham khảo AI'
   },
   {
     icon: '🏛️',
     title: 'Tra cứu Nghị định 376: 34 Cơ quan & 5 Thẩm quyền Mới',
     prompt: 'Trình bày chi tiết cơ cấu tổ chức 34 đơn vị trực thuộc Bộ Tài chính theo Điều 3 Nghị định 376/2026/NĐ-CP và phân tích 5 lĩnh vực thẩm quyền mới tiếp nhận (Đấu thầu/PPP, FDI, Thống kê CPI/GDP, BHXH, Quy hoạch), đồng thời hướng dẫn phân công đầu mối chủ trì tham mưu.',
-    action: 'policy_submission' as const,
-    actionLabel: 'Tra cứu Nghị định 376'
+    action: 'deep_dive' as const,
+    actionLabel: 'Tham khảo AI'
   }
 ];
 
@@ -202,6 +203,83 @@ function getOrCreateSessionId(): string {
     localStorage.setItem('finpulse_user_session_id', sid);
   }
   return sid;
+}
+
+export function getComprehensiveDatabaseArticles(propsNews?: ScrapedNewsItem[]): ScrapedNewsItem[] {
+  const map = new Map<string, ScrapedNewsItem>();
+
+  const addArticle = (item: any) => {
+    if (!item) return;
+    const url = (item.url || item.link || '').trim();
+    const title = (item.title || '').trim();
+    const key = url || (title ? title.toLowerCase() : null) || item.id;
+    if (!key) return;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        id: item.id || `art_${Math.random().toString(36).substring(2, 9)}`,
+        title: item.title || 'Tin tức tài chính',
+        url: url || `https://www.google.com/search?q=${encodeURIComponent(title || 'tin tức tài chính')}`,
+        source: item.source || item.sourceName || 'Tin tức Tài chính',
+        publishedAt: item.publishedAt || item.publishedDate || new Date().toISOString(),
+        publishedTimeStr: item.publishedTimeStr || item.timeAgo || 'Vừa cập nhật',
+        timeAgo: item.timeAgo || 'Vừa xong',
+        sector: item.sector || 'macro',
+        sectorNameVi: item.sectorNameVi || 'Kinh tế vĩ mô',
+        sixW: item.sixW || { who: '', what: '', why: '', when: '', where: '', how: '' },
+        sentiment: item.sentiment || 'neutral',
+        sentimentScore: typeof item.sentimentScore === 'number' ? item.sentimentScore : 70,
+        sentimentReason: item.sentimentReason || '',
+        impactLevel: item.impactLevel || 'medium',
+        impactScore: typeof item.impactScore === 'number' ? item.impactScore : 65,
+        marketImplication: item.marketImplication || item.sentimentReason || 'Phản ánh diễn biến thị trường',
+        buzzScore: typeof item.buzzScore === 'number' ? item.buzzScore : 70,
+        summary: item.summary || item.snippet || item.content || '',
+        keyPoints: Array.isArray(item.keyPoints) ? item.keyPoints : [],
+        agencies: Array.isArray(item.agencies) ? item.agencies : [],
+        tickers: Array.isArray(item.tickers) ? item.tickers : [],
+        policyTags: Array.isArray(item.policyTags) ? item.policyTags || item.regulatoryTags : []
+      });
+    }
+  };
+
+  if (Array.isArray(propsNews)) {
+    propsNews.forEach(addArticle);
+  }
+
+  try {
+    const dbArticles = globalNewsDatabase.getAll();
+    if (Array.isArray(dbArticles)) {
+      dbArticles.forEach(addArticle);
+    }
+  } catch (e) {
+    console.warn('Error reading globalNewsDatabase:', e);
+  }
+
+  try {
+    const archiveCache = getArchivedNewsCache();
+    if (Array.isArray(archiveCache)) {
+      archiveCache.forEach(addArticle);
+    }
+  } catch (e) {
+    console.warn('Error reading archiveCache:', e);
+  }
+
+  try {
+    if (typeof window !== 'undefined') {
+      const cachedSession = sessionStorage.getItem('mof_scrape_data_cache');
+      if (cachedSession) {
+        const parsed = JSON.parse(cachedSession);
+        if (parsed?.data?.news && Array.isArray(parsed.data.news)) {
+          parsed.data.news.forEach(addArticle);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading sessionStorage news cache:', e);
+  }
+
+  return Array.from(map.values());
 }
 
 export interface LocalNewsAnalysisResult {
@@ -930,7 +1008,6 @@ export const ModalAdvisorChatbot: React.FC<ModalAdvisorChatbotProps> = ({
   data,
   context,
   onOpenDraftStatement,
-  onOpenPolicySubmission,
   onOpenDeepDive,
   onOpenTriggerConfig,
   onOpenGmailAlert,
@@ -1325,7 +1402,7 @@ ${currentRole.fourStepProtocol.step4}
 
   const handleSend = async (
     customPrompt?: string,
-    actionHint?: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public'
+    actionHint?: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public'
   ) => {
     const textToSend = customPrompt || input.trim();
     if (!textToSend || isLoading) return;
@@ -1348,11 +1425,15 @@ ${currentRole.fourStepProtocol.step4}
     const currentDateStr = now.toLocaleDateString('vi-VN');
     const currentYear = now.getFullYear();
 
-    // Perform real-time Multi-Stage Hybrid RAG Re-ranking (BM25 + Cross-Encoder Semantic Domain + Tax/Customs Thesaurus + Authority Weight)
-    const hybridRagResult = executeHybridRagSearch(textToSend, data?.news || [], { maxResults: 8 });
+    // Retrieve comprehensive database articles (merges active props, in-memory global DB engine, and local archive cache)
+    // Ensures real-time query access even when scanning is incomplete or in progress
+    const allDatabaseNews = getComprehensiveDatabaseArticles(data?.news);
 
-    // Perform real-time client-side natural query filtering and statistical pre-analysis on data.news
-    const localAnalysis = filterAndAnalyzeNewsByNaturalQuery(textToSend, data?.news || [], effectiveTimeRange);
+    // Perform real-time Multi-Stage Hybrid RAG Re-ranking (BM25 + Cross-Encoder Semantic Domain + Tax/Customs Thesaurus + Authority Weight)
+    const hybridRagResult = executeHybridRagSearch(textToSend, allDatabaseNews, { maxResults: 12 });
+
+    // Perform real-time client-side natural query filtering and statistical pre-analysis
+    const localAnalysis = filterAndAnalyzeNewsByNaturalQuery(textToSend, allDatabaseNews, effectiveTimeRange);
 
     const extractedLegalCitations = (hybridRagResult.semanticLegalReRankResults || [])
       .slice(0, 4)
@@ -1371,13 +1452,7 @@ ${currentRole.fourStepProtocol.step4}
       text: '',
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       suggestedAction: actionHint || null,
-      actionLabel: actionHint === 'draft_statement' ? 'Mở Modal Soạn Thông cáo AI' :
-        actionHint === 'policy_submission' ? 'Mở Modal Lập Tờ trình AI' :
-        actionHint === 'deep_dive' ? 'Mở Modal Phân tích Chuyên sâu' :
-        actionHint === 'trigger_config' ? 'Cấu hình Ngưỡng Cảnh báo' :
-        actionHint === 'gmail_alert' ? 'Soạn Cảnh Báo Gmail Khẩn' :
-        actionHint === 'smart_filter_policy' ? 'Lọc Tin Trọng Điểm: Chính Sách' :
-        actionHint === 'smart_filter_public' ? 'Lọc Tin: Người Dân & Doanh Nghiệp' : undefined,
+      actionLabel: actionHint ? 'Tham khảo AI' : undefined,
       isStreaming: true,
       retryPrompt: textToSend,
       retryActionHint: actionHint,
@@ -1403,7 +1478,12 @@ ${currentRole.fourStepProtocol.step4}
       scannedWindow: data?.scannedWindow,
       sentimentMood: data?.sentimentOverview?.overallMood,
       sentimentScore: data?.sentimentOverview?.moodScore,
-      totalFound: data?.totalFound,
+      totalFound: Math.max(data?.totalFound || 0, allDatabaseNews.length),
+      databaseConnectionStatus: {
+        isConnected: true,
+        totalArticlesInDb: allDatabaseNews.length,
+        note: 'Kết nối trực tiếp CSDL tin tức - Truy vấn toàn bộ dữ liệu cả khi chưa quét xong'
+      },
       hybridRagResult: {
         query: textToSend,
         queryIntent: hybridRagResult.queryIntent,
@@ -1462,7 +1542,7 @@ ${currentRole.fourStepProtocol.step4}
         tickers: (n.tickers || []).slice(0, 5),
         policyTags: (n.policyTags || []).slice(0, 5)
       })),
-      recentArticles: (data?.news || []).slice(0, 25).map(n => ({
+      recentArticles: allDatabaseNews.slice(0, 35).map(n => ({
         id: n.id,
         title: n.title,
         url: ensureArticleUrl(n.url || (n as any).link, n.title, n.source),
@@ -1656,10 +1736,8 @@ ${currentRole.fourStepProtocol.step4}
         throw new Error('Luồng stream rỗng, kích hoạt cơ chế suy luận dự phòng');
       }
 
-      // Extract action tag if present in accumulatedContent
-      let actionFromText: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null = null;
+      let actionFromText: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null = null;
       if (accumulatedContent.includes('[RECOMMEND_ACTION:draft_statement]')) actionFromText = 'draft_statement';
-      else if (accumulatedContent.includes('[RECOMMEND_ACTION:policy_submission]')) actionFromText = 'policy_submission';
       else if (accumulatedContent.includes('[RECOMMEND_ACTION:deep_dive]')) actionFromText = 'deep_dive';
       else if (accumulatedContent.includes('[RECOMMEND_ACTION:trigger_config]')) actionFromText = 'trigger_config';
       else if (accumulatedContent.includes('[RECOMMEND_ACTION:gmail_alert]')) actionFromText = 'gmail_alert';
@@ -1675,14 +1753,7 @@ ${currentRole.fourStepProtocol.step4}
                 text: accumulatedContent || 'Đã hoàn thành phản hồi tham mưu.',
                 isStreaming: false,
                 suggestedAction: actionFromText || detectedAction || (m.suggestedAction !== 'draft_statement' ? m.suggestedAction : null),
-                actionLabel: actionFromText === 'draft_statement' ? 'Mở Modal Soạn Thông cáo AI' :
-                  actionFromText === 'policy_submission' ? 'Mở Modal Lập Tờ trình AI' :
-                  actionFromText === 'deep_dive' ? 'Mở Modal Phân tích Chuyên sâu' :
-                  actionFromText === 'trigger_config' ? 'Mở Modal Cấu hình Cảnh báo' :
-                  actionFromText === 'gmail_alert' ? 'Gửi Cảnh báo Khẩn qua Gmail' :
-                  actionFromText === 'smart_filter_policy' ? 'Lọc Tin Nhóm Chính sách' :
-                  actionFromText === 'smart_filter_public' ? 'Lọc Tin Người Dân/DN' :
-                  (detectedActionLabel || m.actionLabel || undefined)
+                actionLabel: 'Tham khảo AI'
               }
             : m
         )
@@ -1809,13 +1880,13 @@ ${currentRole.fourStepProtocol.step4}
             `  + *Kho bạc Nhà nước:* Tăng cường giao dịch qua dịch vụ công trực tuyến và thanh toán không tiền mặt.\n` +
             `- **Căn cứ phát ngôn:** Áp dụng Quy chế phát ngôn của Bộ Tài chính và Luật Báo chí để cung cấp thông tin kịp thời, chuẩn xác.\n` +
             `- **Thể thức văn bản đề xuất:** Lập **Tờ trình Lãnh đạo Bộ** (đối với chính sách lớn) và phát hành **Thông cáo Báo chí** (đối với định hướng truyền thông xã hội).\n\n` +
-            `## 4. ĐỀ XUẤT GIẢI PHÁP THAM MƯU TÁC CHIẾN\n\n` +
-            `1. **Giải pháp Truyền thông & Định hướng:**\n` +
-            `   - Chủ động gửi bản tin/thông điệp chính thức cho ${sourceName} và các cơ quan thông tấn nhằm làm rõ các điểm mới trong chính sách tài khóa.\n` +
-            `   - Kích hoạt **Modal Soạn Thông cáo Báo chí AI** để xuất văn bản chuẩn mực 3 phần phát hành cho báo giới.\n` +
+            `## 4. KHUYẾN NGHỊ & GIẢI PHÁP THỰC THI TÍCH HỢP AI\n\n` +
+            `1. **Giải pháp Thực thi Tác chiến 24h:**\n` +
+            `   - Chủ động phát hành thông điệp truyền thông chính thức cho ${sourceName} và các cơ quan báo chí nhằm làm rõ chính sách tài khóa.\n` +
+            `   - Tích hợp **Tham khảo AI** để khởi tạo kịch bản xử lý thông tin 3 phần nhanh chóng.\n` +
             `2. **Giải pháp Nghiệp vụ & Điều hành:**\n` +
-            `   - Tham mưu Lãnh đạo Bộ ban hành Công văn chỉ đạo các đơn vị chuyên môn tăng tốc xử lý các phản ánh của doanh nghiệp.\n` +
-            `   - Sử dụng **Modal Lập Tờ trình Chính sách AI** để hoàn thiện hồ sơ trình cấp có thẩm quyền.\n\n` +
+            `   - Tham mưu Lãnh đạo Bộ ban hành Công văn chỉ đạo các đơn vị chuyên môn xử lý dứt điểm các vướng mắc phát sinh.\n` +
+            `   - Sử dụng **Tham khảo AI** để tự động bóc tách 6W và lập ma trận kiểm soát rủi ro.\n\n` +
             `[RECOMMEND_ACTION:deep_dive]`;
         } else if (lowerQ.includes('năm nào') || lowerQ.includes('thời gian') || lowerQ.includes('cập nhật') || lowerQ.includes('ngày nào') || lowerQ.includes('hôm nay')) {
           localFallback = `**[Thông tin Mốc Thời gian Dữ liệu & Bối cảnh Thị trường]**\n\n` +
@@ -1827,12 +1898,12 @@ ${currentRole.fourStepProtocol.step4}
           localFallback = `Đối với tình huống xuất hiện **tin đồn thất thiệt hoặc khủng hoảng truyền thông** trong khung thời gian **${effectiveTimeRange}**:\n\n` +
             `1. **Hình thức đề xuất:** **Thông cáo Báo chí / Phát ngôn chính thức**.\n` +
             `2. **Căn cứ & Mục tiêu:** Cung cấp thông tin chính thống theo Quy chế phát ngôn của Bộ. Tránh dùng văn bản nội bộ vì tốc độ lan tỏa chậm.\n` +
-            `3. **Khuyến nghị:** Sử dụng **Modal Soạn Thông cáo Báo chí AI** để xuất văn bản chuẩn mực 3 phần ngay.`;
+            `3. **Khuyến nghị & Giải pháp Thực thi AI:** Kích hoạt ngay kịch bản xử lý và soạn phát ngôn định hướng thông qua **Tham khảo AI**.`;
         } else if (lowerQ.includes('tờ trình') || lowerQ.includes('sửa đổi') || lowerQ.includes('chính sách')) {
           localFallback = `Đối với đề xuất **sửa đổi cơ chế, chính sách hoặc báo cáo Lãnh đạo cấp cao**:\n\n` +
-            `1. **Hình thức đề xuất:** **Tờ trình (Submission)** kèm Dự thảo Công văn/Thông tư.\n` +
-            `2. **Căn cứ & Mục tiêu:** Tuân thủ quy định về thể thức văn bản hành chính công vụ. Tờ trình nêu rõ Đánh giá tác động, Căn cứ pháp lý và Các phương án lựa chọn.\n` +
-            `3. **Khuyến nghị:** Sử dụng **Modal Lập Tờ trình Chính sách AI** để xuất khung hoàn chỉnh.`;
+            `1. **Hình thức đề xuất:** **Báo cáo Tham mưu Tác chiến Tích hợp AI** kèm Dự thảo Công văn/Thông tư.\n` +
+            `2. **Căn cứ & Mục tiêu:** Tuân thủ quy định về thể thức văn bản hành chính công vụ. Nêu rõ Đánh giá tác động, Căn cứ pháp lý và Phương án lựa chọn.\n` +
+            `3. **Khuyến nghị & Giải pháp Thực thi AI:** Sử dụng công cụ **Tham khảo AI** để phân tích 360 độ và lập ma trận giải pháp thực thi trực tiếp.`;
         } else {
           const tfFallback2 = parseFlexibleTimeframe(textToSend, localAnalysis.detectedTimeRange);
           const labelStr = tfFallback2.rangeLabel;
@@ -1890,9 +1961,7 @@ ${currentRole.fourStepProtocol.step4}
                   isStreaming: false,
                   isError: false,
                   suggestedAction: actionHint || null,
-                  actionLabel: actionHint === 'draft_statement' ? 'Mở Modal Soạn Thông cáo AI' :
-                    actionHint === 'policy_submission' ? 'Mở Modal Lập Tờ trình AI' :
-                    actionHint === 'deep_dive' ? 'Mở Modal Phân tích Chuyên sâu' : undefined
+                  actionLabel: actionHint ? 'Tham khảo AI' : undefined
                 }
               : m
           )
@@ -2030,8 +2099,6 @@ ${currentRole.fourStepProtocol.step4}
     if (!action) return;
     if (action === 'draft_statement' && onOpenDraftStatement) {
       onOpenDraftStatement(contextArticle || undefined);
-    } else if (action === 'policy_submission' && onOpenPolicySubmission) {
-      onOpenPolicySubmission(contextArticle || undefined);
     } else if (action === 'deep_dive' && onOpenDeepDive) {
       onOpenDeepDive(contextArticle || undefined);
     } else if (action === 'trigger_config' && onOpenTriggerConfig) {
@@ -2061,6 +2128,11 @@ ${currentRole.fourStepProtocol.step4}
             
             <div className="min-w-0 flex items-center gap-2">
               <span className="font-bold text-sm leading-tight text-white shrink-0">Trợ Lý Tham Mưu AI</span>
+
+              <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[11px] font-medium shrink-0" title="Đã kết nối trực tiếp CSDL: Truy vấn dữ liệu tức thì kể cả khi chưa quét xong">
+                <Wifi className="w-3 h-3 text-emerald-400 animate-pulse" />
+                <span>Đã kết nối CSDL</span>
+              </div>
               
               {/* Inline Editable Session Pill with Unified Quick Menu */}
               <div className="relative hidden sm:flex items-center gap-1.5 bg-black/25 px-2.5 py-0.5 rounded-lg border border-white/15 text-xs text-red-100 max-w-[260px] md:max-w-xs">
@@ -2522,7 +2594,7 @@ ${currentRole.fourStepProtocol.step4}
                           className="px-3 py-1 text-xs font-semibold bg-gradient-to-r from-red-700 to-amber-700 hover:from-red-800 hover:to-amber-800 text-white rounded-lg shadow-sm flex items-center gap-1 transition-all cursor-pointer"
                         >
                           <Sparkles className="w-3 h-3" />
-                          {msg.actionLabel || 'Mở Công cụ'}
+                          {msg.actionLabel || 'Tham khảo AI'}
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       </div>

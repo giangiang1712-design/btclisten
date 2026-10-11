@@ -108,38 +108,50 @@ const HTML_ENTITY_MAP: Record<string, string> = {
 };
 
 /**
- * Decodes all HTML entities (named, numeric decimal, hex) safely.
+ * Decodes all HTML entities (named, numeric decimal, hex) safely with multi-pass protection.
  */
 export function decodeHtmlEntities(str: string | null | undefined): string {
   if (!str) return '';
   let result = String(str);
 
-  // 1. Replace known common named entities
-  for (const [entity, replacement] of Object.entries(HTML_ENTITY_MAP)) {
-    if (result.includes(entity)) {
-      result = result.replaceAll(entity, replacement);
+  // Strip CDATA wrapper if present
+  result = result.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1');
+
+  // Multi-pass decoding (up to 3 passes) to resolve nested escapes like &amp;quot; -> &quot; -> "
+  for (let pass = 0; pass < 3; pass++) {
+    const prev = result;
+
+    // 1. Replace known common named entities
+    for (const [entity, replacement] of Object.entries(HTML_ENTITY_MAP)) {
+      if (result.includes(entity)) {
+        result = result.replaceAll(entity, replacement);
+      }
     }
+
+    // 2. Numeric decimal entities &#123;
+    result = result.replace(/&#(\d+);/g, (_, dec) => {
+      try {
+        const code = parseInt(dec, 10);
+        return code > 0 && code < 65536 ? String.fromCharCode(code) : _;
+      } catch {
+        return _;
+      }
+    });
+
+    // 3. Hexadecimal entities &#xABC;
+    result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      try {
+        const code = parseInt(hex, 16);
+        return code > 0 && code < 65536 ? String.fromCharCode(code) : _;
+      } catch {
+        return _;
+      }
+    });
+
+    if (result === prev || !result.includes('&')) break;
   }
 
-  // 2. Numeric decimal entities &#123;
-  result = result.replace(/&#(\d+);/g, (_, dec) => {
-    try {
-      return String.fromCharCode(parseInt(dec, 10));
-    } catch {
-      return _;
-    }
-  });
-
-  // 3. Hexadecimal entities &#xABC;
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
-    try {
-      return String.fromCharCode(parseInt(hex, 16));
-    } catch {
-      return _;
-    }
-  });
-
-  // 4. Browser DOMParser fallback if running in client
+  // Browser DOMParser fallback if running in client and entities still remain
   if (typeof window !== 'undefined' && typeof DOMParser !== 'undefined' && result.includes('&')) {
     try {
       const doc = new DOMParser().parseFromString(result, 'text/html');
@@ -156,18 +168,31 @@ export function decodeHtmlEntities(str: string | null | undefined): string {
 }
 
 /**
- * Strips HTML tags, decodes entities, and extracts alt-text from RSS image markup.
+ * Strips HTML tags, decodes entities, removes CDATA, cleans up img alt tags, and standardizes title typography.
  */
 export function cleanHtmlTitle(title: string | undefined | null, fallbackSnippet?: string): string {
   if (!title) return fallbackSnippet?.substring(0, 100) || 'Tin tức nghiệp vụ Bộ Tài chính';
+  
   let decoded = decodeHtmlEntities(title);
-  if (decoded.includes('<img')) {
+
+  // Extract alt-text if title is an image tag
+  if (decoded.includes('<img') || decoded.includes('<IMG')) {
     const match = decoded.match(/alt=["']([^"']+)["']/i);
     if (match && match[1] && !match[1].includes('Ảnh có sử dụng')) {
-      decoded = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+      decoded = match[1];
     } else {
       decoded = fallbackSnippet?.substring(0, 100) || 'Tin tức nghiệp vụ Bộ Tài chính';
     }
   }
-  return decoded.replace(/<[^>]+>/g, '').trim();
+
+  // Strip all remaining HTML tags
+  decoded = decoded.replace(/<[^>]+>/g, ' ');
+
+  // Standardize multiple spaces, newlines, tabs
+  decoded = decoded.replace(/\s+/g, ' ').trim();
+
+  // Strip leading/trailing stray quotes or colon artifacts
+  decoded = decoded.replace(/^["'“”«»:\s]+|["'“”«»:\s]+$/g, '').trim();
+
+  return decoded || fallbackSnippet?.substring(0, 100) || 'Tin tức nghiệp vụ Bộ Tài chính';
 }

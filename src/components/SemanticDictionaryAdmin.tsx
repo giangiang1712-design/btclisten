@@ -3256,7 +3256,7 @@ export const SemanticDictionaryAdmin: React.FC = () => {
                   <h3 className="text-base sm:text-lg font-black flex items-center gap-2">
                     <span>Trợ Lý AI Gợi Ý Ngữ Cảnh 2026</span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                      Gemini 3.8 Flash AI Powered
+                      Tham khảo AI
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -3362,7 +3362,7 @@ export const SemanticDictionaryAdmin: React.FC = () => {
                 <div className="p-12 rounded-2xl border text-center space-y-3 bg-violet-500/5 border-violet-500/20">
                   <Sparkles className="w-8 h-8 text-violet-500 animate-spin mx-auto" />
                   <p className="text-xs font-bold text-violet-600 dark:text-violet-300">
-                    Trợ lý Gemini AI đang quét cơ sở pháp lý và từ điển chuyên ngành Bộ Tài chính 2026...
+                    Tham khảo AI đang quét cơ sở pháp lý và từ điển chuyên ngành Bộ Tài chính 2026...
                   </p>
                 </div>
               ) : aiResult ? (

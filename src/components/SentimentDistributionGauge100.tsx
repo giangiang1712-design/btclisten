@@ -235,20 +235,56 @@ export const SentimentDistributionGauge100: React.FC<SentimentDistributionGauge1
 
       {/* OPTIONAL EXPANDED CARDS (Only when user explicitly clicks expand) */}
       {isExpanded && (
-        <div className="grid grid-cols-3 gap-2 pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/60 text-xs animate-fadeIn">
-          <div className="p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
-            <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-[11px]">Tích Cực</span>
-            <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{bullishPct}% ({bullish} bài)</span>
+        <div className="pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/60 space-y-3 text-xs animate-fadeIn">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
+              <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-[11px]">Tích Cực</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{bullishPct}% ({bullish} bài)</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40">
+              <span className="font-bold text-amber-700 dark:text-amber-400 block text-[11px]">Trung Tính</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{neutralPct}% ({neutral} bài)</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-800/40">
+              <span className="font-bold text-rose-700 dark:text-rose-400 block text-[11px]">Tiêu Cực</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{bearishPct}% ({bearish} bài)</span>
+            </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40">
-            <span className="font-bold text-amber-700 dark:text-amber-400 block text-[11px]">Trung Tính</span>
-            <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{neutralPct}% ({neutral} bài)</span>
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-800/40">
-            <span className="font-bold text-rose-700 dark:text-rose-400 block text-[11px]">Tiêu Cực</span>
-            <span className="text-sm font-black text-slate-900 dark:text-white font-mono">{bearishPct}% ({bearish} bài)</span>
+          {/* Quy chuẩn phân cấp thời hạn xử lý (SLA) theo điểm sắc thái */}
+          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <span>QUY CHUẨN XỬ LÝ THEO CHỈ SỐ SẮC THÁI DƯ LUẬN:</span>
+              <span className="text-[10px] font-mono text-slate-400">Chỉ đạo Lãnh đạo Bộ</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 text-[11px] font-mono">
+              <div className="p-1.5 rounded-lg bg-red-100 text-red-900 dark:bg-red-950/50 dark:text-red-300 border border-red-300 dark:border-red-800 text-center font-bold">
+                <span className="block text-[10px] text-red-700 dark:text-red-400">&lt; 50 điểm</span>
+                <span>Xử lý trong 2h</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-orange-100 text-orange-900 dark:bg-orange-950/50 dark:text-orange-300 border border-orange-300 dark:border-orange-800 text-center font-bold">
+                <span className="block text-[10px] text-orange-700 dark:text-orange-400">&lt; 60 điểm (50-60)</span>
+                <span>Xử lý trong 6h</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-center font-bold">
+                <span className="block text-[10px] text-amber-700 dark:text-amber-400">&lt; 75 điểm (60-75)</span>
+                <span>Xử lý trong 12h</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-yellow-100 text-yellow-900 dark:bg-yellow-950/50 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 text-center font-bold">
+                <span className="block text-[10px] text-yellow-700 dark:text-yellow-400">75 - 85 điểm</span>
+                <span>Trong ngày</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-blue-100 text-blue-900 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-300 dark:border-blue-800 text-center font-bold">
+                <span className="block text-[10px] text-blue-700 dark:text-blue-400">85 - 90 điểm</span>
+                <span>Cân bằng</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-center font-bold">
+                <span className="block text-[10px] text-emerald-700 dark:text-emerald-400">&gt; 90 điểm</span>
+                <span>Tích cực</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

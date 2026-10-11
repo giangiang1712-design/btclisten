@@ -812,17 +812,17 @@ export const TopicTrendVelocityModule: React.FC<TopicTrendVelocityModuleProps> =
                       type="button"
                       onClick={(e) => handleGenerateInsight(topic, e)}
                       className="w-full py-1.5 px-3 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-                      title="Sử dụng Gemini API để tạo tóm tắt điều hành giải thích lý do gia tăng khối lượng và sắc thái dư luận"
+                      title="Tham khảo AI để tạo tóm tắt điều hành giải thích lý do gia tăng khối lượng và sắc thái dư luận"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                      <span>Generate Trend Insight</span>
+                      <span>Tham khảo AI</span>
                     </button>
                   )}
 
                   {loadingInsightTopicId === topic.id && (
                     <div className="p-2.5 rounded-xl bg-emerald-950/20 dark:bg-emerald-950/40 border border-emerald-500/30 text-[11px] flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-300 animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500 shrink-0" />
-                      <span>Gemini đang phân tích lý do bùng nổ xu hướng...</span>
+                      <span>Tham khảo AI đang phân tích lý do bùng nổ xu hướng...</span>
                     </div>
                   )}
 
@@ -847,7 +847,7 @@ export const TopicTrendVelocityModule: React.FC<TopicTrendVelocityModuleProps> =
                       <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold border-b border-emerald-500/20 pb-1">
                         <span className="flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-amber-300" />
-                          <span>Gemini Trend Insight</span>
+                          <span>Tham khảo AI</span>
                         </span>
                         <div className="flex items-center gap-1">
                           <button
@@ -1075,13 +1075,13 @@ export const TopicTrendVelocityModule: React.FC<TopicTrendVelocityModuleProps> =
                       </div>
                       <div>
                         <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                          <span>Phân Tích Bùng Nổ Xu Hướng Gemini AI</span>
+                          <span>Phân Tích Bùng Nổ Xu Hướng</span>
                           <span className="px-2 py-0.5 rounded text-[10px] uppercase font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            Executive Insight
+                            Tham khảo AI
                           </span>
                         </h4>
                         <p className="text-[11px] text-slate-400">
-                          Báo cáo tóm tắt 1 đoạn văn giải thích lý do gia tăng khối lượng & sắc thái dư luận từ Gemini API
+                          Báo cáo tóm tắt 1 đoạn văn giải thích lý do gia tăng khối lượng & sắc thái dư luận từ Tham khảo AI
                         </p>
                       </div>
                     </div>
@@ -1100,7 +1100,7 @@ export const TopicTrendVelocityModule: React.FC<TopicTrendVelocityModuleProps> =
                       ) : (
                         <>
                           <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                          <span>Generate Trend Insight</span>
+                          <span>Tham khảo AI</span>
                         </>
                       )}
                     </button>
@@ -1109,7 +1109,7 @@ export const TopicTrendVelocityModule: React.FC<TopicTrendVelocityModuleProps> =
                   {loadingInsightTopicId === currentTopic.id && (
                     <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2 animate-pulse">
                       <Loader2 className="w-4 h-4 animate-spin text-emerald-400 shrink-0" />
-                      <span>Gemini đang tự động tổng hợp dữ liệu tin tức và phân tích nguyên nhân tác động...</span>
+                      <span>Tham khảo AI đang tự động tổng hợp dữ liệu tin tức và phân tích nguyên nhân tác động...</span>
                     </div>
                   )}
 

@@ -7,6 +7,7 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  getDocFromServer,
   deleteDoc,
   query,
   orderBy,
@@ -89,6 +90,15 @@ try {
     disableNetwork(dbInstance).catch(() => {});
   }
   console.log('✅ Firebase Firestore connected successfully:', firebaseConfig.projectId);
+
+  // Validate connection to Firestore on boot
+  if (dbInstance && !isQuotaExceeded) {
+    getDocFromServer(doc(dbInstance, 'test', 'connection')).catch((error) => {
+      if (error instanceof Error && error.message.includes('the client is offline')) {
+        console.error("Please check your Firebase configuration.");
+      }
+    });
+  }
 } catch (err) {
   console.warn('⚠️ Firebase init fallback to local persistence:', err);
   isFirebaseAvailable = false;

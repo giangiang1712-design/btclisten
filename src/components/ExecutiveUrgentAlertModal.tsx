@@ -383,7 +383,7 @@ export const ExecutiveUrgentAlertModal: React.FC<ExecutiveUrgentAlertModalProps>
                       ⚡ Vì Sao Lãnh Đạo Cần Quan Tâm (Why This Matters)
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                      AI Gemini Tham Mưu
+                      Tham khảo AI
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-0.5">
@@ -401,7 +401,7 @@ export const ExecutiveUrgentAlertModal: React.FC<ExecutiveUrgentAlertModalProps>
                     ? 'bg-slate-800 border-slate-700 hover:bg-indigo-950/50 hover:border-indigo-500/50 text-indigo-300'
                     : 'bg-white border-slate-200 hover:bg-indigo-50 hover:border-indigo-300 text-indigo-700 shadow-2xs'
                 } disabled:opacity-50`}
-                title="Tạo lại bản phân tích 3 ý bằng Gemini"
+                title="Tham khảo AI phân tích lại"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingBullets ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Phân tích lại</span>

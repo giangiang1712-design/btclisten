@@ -46,7 +46,6 @@ export interface CommandPaletteModalProps {
   onSelectArticle: (article: ScrapedNewsItem) => void;
   onOpenAdvisorChatbot: (article?: ScrapedNewsItem) => void;
   onOpenDraftStatement?: (article?: ScrapedNewsItem) => void;
-  onOpenPolicySubmission?: (article?: ScrapedNewsItem) => void;
   onOpenTaxonomyModal?: () => void;
   onOpenDbResetModal?: () => void;
   onOpenKeywordWeights?: () => void;
@@ -87,7 +86,6 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onSelectArticle,
   onOpenAdvisorChatbot,
   onOpenDraftStatement,
-  onOpenPolicySubmission,
   onOpenKeywordWeights,
   onOpenKeywordWeightModal,
   onOpenAlertTriggers,

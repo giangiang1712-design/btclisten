@@ -25,12 +25,29 @@ import {
   Network,
   Cpu,
   Landmark,
+  Users,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { TimeRange } from '../types';
 import { useTheme } from '../lib/theme';
 import { useI18n } from '../lib/i18n';
 
-export type CmsNavigationTab = 'dashboard' | 'table' | 'database' | 'graph' | 'briefing' | 'sources' | 'knowledge' | 'finetune' | 'dictionary' | 'keywords' | 'triggers' | 'analytics' | 'reports';
+export type CmsNavigationTab =
+  | 'dashboard'
+  | 'processed'
+  | 'experts'
+  | 'table'
+  | 'database'
+  | 'graph'
+  | 'briefing'
+  | 'sources'
+  | 'knowledge'
+  | 'finetune'
+  | 'dictionary'
+  | 'keywords'
+  | 'triggers'
+  | 'analytics'
+  | 'reports';
 
 interface CmsSidebarProps {
   activeTab: CmsNavigationTab;
@@ -40,6 +57,9 @@ interface CmsSidebarProps {
   totalArticles: number;
   crisisCount: number;
   positiveCount: number;
+  processedCount?: number;
+  expertOpinionsCount?: number;
+  watchlistCount?: number;
   timeRange: TimeRange;
   isLoading: boolean;
   lastScannedTime: string | null;
@@ -60,6 +80,9 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   totalArticles,
   crisisCount,
   positiveCount,
+  processedCount = 0,
+  expertOpinionsCount = 0,
+  watchlistCount = 0,
   timeRange,
   isLoading,
   lastScannedTime,
@@ -84,7 +107,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     }
   }, [activeTab]);
 
-  // CORE 4 LEADERSHIP PILLARS (Light Executive Theme)
+  // CORE EXECUTIVE LEADERSHIP NAVIGATION
   const primaryNavItems = [
     {
       id: 'dashboard' as CmsNavigationTab,
@@ -95,6 +118,22 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       badgeColor: 'bg-slate-900 text-white font-bold',
     },
     {
+      id: 'processed' as CmsNavigationTab,
+      label: isVietnamese ? 'VIỆC ĐÃ XỬ LÝ' : 'Resolved Actions',
+      subLabel: isVietnamese ? 'Lọc theo ngày, 2-3 ngày, 1 tuần' : 'History & SLA filter 1-7 days',
+      icon: CheckCircle2,
+      badge: processedCount > 0 ? `${processedCount} Xong` : undefined,
+      badgeColor: 'bg-emerald-700 text-white font-bold shadow-xs',
+    },
+    {
+      id: 'experts' as CmsNavigationTab,
+      label: isVietnamese ? 'Ý kiến Nhân Vật, Tổ chức' : 'Expert & Stakeholder Voices',
+      subLabel: isVietnamese ? 'Nhận định chính sách & Đáng lưu tâm' : 'Policy opinions & Watchlist',
+      icon: Users,
+      badge: watchlistCount > 0 ? `⭐ ${watchlistCount} Lưu tâm` : (expertOpinionsCount > 0 ? `${expertOpinionsCount} Ý kiến` : undefined),
+      badgeColor: 'bg-amber-600 text-white font-bold shadow-xs',
+    },
+    {
       id: 'sources' as CmsNavigationTab,
       label: isVietnamese ? '30 Nguồn Báo Chí' : '30 Core Sources',
       subLabel: isVietnamese ? 'Quản lý & Hàng đợi quét 24h' : 'Source controls & queue status',
@@ -103,17 +142,9 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       badgeColor: 'bg-slate-200 text-slate-900 border border-slate-300',
     },
     {
-      id: 'briefing' as CmsNavigationTab,
-      label: isVietnamese ? 'Bản Tin Tham Mưu Lãnh Đạo' : 'Executive Briefing',
-      subLabel: isVietnamese ? 'Tóm tắt tham mưu, xuất báo cáo' : 'Briefing & PDF/Word export',
-      icon: FileCheck,
-      badge: positiveCount > 0 ? `${positiveCount} Điểm sáng` : undefined,
-      badgeColor: 'bg-slate-200 text-slate-900 border border-slate-300',
-    },
-    {
       id: 'table' as CmsNavigationTab,
-      label: isVietnamese ? 'CSDL Bài Báo & Học Máy AI' : 'Article DB & AI Training',
-      subLabel: isVietnamese ? 'Tra cứu, lọc sắc thái & loại trừ tin' : 'Articles library & AI exclusion',
+      label: isVietnamese ? 'CSDL Bài Báo' : 'Article DB',
+      subLabel: isVietnamese ? 'Tra cứu, lọc sắc thái & quản lý bài viết' : 'Articles library & sentiment filters',
       icon: Database,
       badge: `${totalArticles}`,
       badgeColor: 'bg-slate-200 text-slate-900 border border-slate-300',
@@ -139,12 +170,6 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       label: isVietnamese ? 'Bản Đồ Mạng Lưới Lan Truyền' : 'Information Network',
       subLabel: isVietnamese ? 'Đồ thị lan tỏa tin tức' : 'Propagation graph network',
       icon: Network,
-    },
-    {
-      id: 'finetune' as CmsNavigationTab,
-      label: isVietnamese ? 'Huấn Luyện AI Nội Bộ' : 'Internal AI Training',
-      subLabel: isVietnamese ? 'Cải thiện mô hình phân loại' : 'Fine-tuning & model tuning',
-      icon: Cpu,
     },
   ];
 

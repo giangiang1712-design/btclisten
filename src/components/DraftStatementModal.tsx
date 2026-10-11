@@ -4,6 +4,7 @@ import { fetchLeadershipDraftStatement } from '../services/api';
 import { generateSmartExecutiveDirective, getMediaStrategyPresentation } from '../lib/directiveEngine';
 import { useTheme } from '../lib/theme';
 import { SourceBrandBadge } from './SourceBrandBadge';
+import { cleanHtmlTitle } from '../lib/htmlDecoder';
 import {
   X,
   FileText,
@@ -15,6 +16,7 @@ import {
   Download,
   Loader2,
   ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 interface DraftStatementModalProps {
@@ -29,6 +31,36 @@ export const DraftStatementModal: React.FC<DraftStatementModalProps> = ({ item, 
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'statement' | 'talkingPoints'>('statement');
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('crisis_resolution');
+
+  const executeAiGeneration = async (strategyOverride?: string) => {
+    if (!item) return;
+    setIsLoading(true);
+    setError(null);
+
+    const directive = item.executiveDirective;
+    const strat = strategyOverride || selectedStrategy || directive?.mediaStrategy?.type || (item.sentiment === 'bearish' ? 'crisis_resolution' : 'positive_amplification');
+    const agency = directive?.where?.primaryAgency || directive?.whereEntity || item.agencies?.[0] || 'Bộ Tài chính';
+    const whatHappened = directive?.whatHappened || item.title;
+    const rootCause = directive?.rootCause || 'Diễn biến thị trường và yếu tố khách quan.';
+
+    try {
+      const data = await fetchLeadershipDraftStatement({
+        title: item.title,
+        summary: item.summary,
+        sector: item.sectorNameVi,
+        strategyType: strat,
+        agency,
+        whatHappened,
+        rootCause,
+      });
+      setStatement(data);
+    } catch (err: any) {
+      setError(err.message || 'Không thể khởi tạo dự thảo phát ngôn bằng AI.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!item) {
@@ -36,41 +68,9 @@ export const DraftStatementModal: React.FC<DraftStatementModalProps> = ({ item, 
       return;
     }
 
-    let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    const directive = item.executiveDirective;
-    const strategyType = directive?.mediaStrategy?.type || (item.sentiment === 'bearish' ? 'crisis_resolution' : 'positive_amplification');
-    const agency = directive?.where?.primaryAgency || directive?.whereEntity || item.agencies?.[0] || 'Bộ Tài chính';
-    const whatHappened = directive?.whatHappened || item.title;
-    const rootCause = directive?.rootCause || 'Diễn biến thị trường và yếu tố khách quan.';
-
-    fetchLeadershipDraftStatement({
-      title: item.title,
-      summary: item.summary,
-      sector: item.sectorNameVi,
-      strategyType,
-      agency,
-      whatHappened,
-      rootCause,
-    })
-      .then((data) => {
-        if (isMounted) {
-          setStatement(data);
-          setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err.message || 'Không thể khởi tạo dự thảo phát ngôn.');
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    const defaultStrat = item.executiveDirective?.mediaStrategy?.type || (item.sentiment === 'bearish' ? 'crisis_resolution' : 'positive_amplification');
+    setSelectedStrategy(defaultStrat);
+    executeAiGeneration(defaultStrat);
   }, [item]);
 
   if (!item) return null;
@@ -180,7 +180,75 @@ export const DraftStatementModal: React.FC<DraftStatementModalProps> = ({ item, 
               <span className="text-slate-400">•</span>
               <span className={`font-semibold ${isDark ? 'text-cyan-400' : 'text-sky-700'}`}>{item.sectorNameVi}</span>
             </div>
-            <h3 className={`text-sm sm:text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{item.title}</h3>
+            <h3 className={`text-sm sm:text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+              {cleanHtmlTitle(item.title, item.summary)}
+            </h3>
+          </div>
+
+          {/* AI Generation Control Bar */}
+          <div className={`p-4 rounded-xl border space-y-3 ${
+            isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-300'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>Trợ Lý Soạn Thảo (Tham khảo AI)</span>
+                    <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                      Thời Gian Thực
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Chọn góc độ truyền thông để AI lập luận chuẩn chỉ đạo và thể chế pháp lý Bộ Tài chính
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => executeAiGeneration()}
+                disabled={isLoading}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs disabled:opacity-50"
+              >
+                {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span>{isLoading ? 'Đang soạn thảo AI...' : 'Tạo Lại Bằng AI'}</span>
+              </button>
+            </div>
+
+            {/* Strategy Options */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs font-bold">
+              {[
+                { id: 'crisis_resolution', label: '🚨 Khủng hoảng & Tin đồn', desc: 'Dập tắt tin sai, trấn an dư luận' },
+                { id: 'policy_guidance', label: '📜 Hướng dẫn chính sách', desc: 'Làm rõ quy định Thuế, Hải quan' },
+                { id: 'strict_enforcement', label: '⚖️ Thượng tôn pháp luật', desc: 'Xử lý nghiêm minh, minh bạch' },
+                { id: 'positive_amplification', label: '🌟 Lan tỏa tích cực', desc: 'Thành tựu thu NSNN, TTCK' },
+              ].map(({ id, label, desc }) => {
+                const isSelected = selectedStrategy === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setSelectedStrategy(id);
+                      executeAiGeneration(id);
+                    }}
+                    className={`p-2 rounded-xl text-left transition border cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-700 text-white border-emerald-600 shadow-xs'
+                        : isDark
+                        ? 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                        : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                    }`}
+                  >
+                    <span className="block font-black text-[11px] truncate">{label}</span>
+                    <span className={`block text-[10px] truncate ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                      {desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* 4 Pillars Summary for Quick Leadership Reference */}

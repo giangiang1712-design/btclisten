@@ -34,7 +34,6 @@ import { LeadershipInsightsBanner } from './components/LeadershipInsightsBanner'
 import { DraftStatementModal } from './components/DraftStatementModal';
 import { AlertTriggerModal } from './components/AlertTriggerModal';
 import { ExecutiveUrgentAlertModal } from './components/ExecutiveUrgentAlertModal';
-import { PolicySubmissionModal } from './components/PolicySubmissionModal';
 import { ModalAdvisorChatbot } from './components/ModalAdvisorChatbot';
 import { KnowledgeBaseManager, UserKnowledgeDocument } from './components/KnowledgeBaseManager';
 import { NewsSourcesHub } from './components/NewsSourcesHub';
@@ -92,6 +91,9 @@ import { UrgentNotificationToast } from './components/UrgentNotificationToast';
 import { checkAndAutoDispatchGmailAlerts } from './lib/gmailAlertService';
 import { useTheme } from './lib/theme';
 import { useI18n } from './lib/i18n';
+import { ProcessedActionsView } from './components/ProcessedActionsView';
+import { ExpertOpinionsView } from './components/ExpertOpinionsView';
+import { getDirectiveTier } from './lib/policyFrictionEngine';
 import {
   KeywordWeightMap,
   KeywordWeightDef,
@@ -202,6 +204,35 @@ export default function App() {
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isResetInProgress, setIsResetInProgress] = useState<boolean>(false);
+  const [processedCount, setProcessedCount] = useState<number>(0);
+  const [expertOpinionsCount, setExpertOpinionsCount] = useState<number>(0);
+  const [watchlistCount, setWatchlistCount] = useState<number>(0);
+
+  // Sync processed count and expert opinions count from database API
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/processed-actions?days=all')
+      .then((res) => res.json())
+      .then((json) => {
+        if (isMounted && json.success) setProcessedCount(json.total || 0);
+      })
+      .catch(() => {});
+
+    fetch('/api/expert-opinions')
+      .then((res) => res.json())
+      .then((json) => {
+        if (isMounted && json.success) {
+          setExpertOpinionsCount(json.allTotal || json.total || 0);
+          setWatchlistCount(json.watchlistCount || 0);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cmsTab]);
+
   // Turbo Silent Background Scrape Mode: Scans 150 sources in parallel in background without blocking screen
   const [turboSilentMode, setTurboSilentMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -513,7 +544,6 @@ export default function App() {
   // Modals & view modes
   const [activeDeepDiveItem, setActiveDeepDiveItem] = useState<ScrapedNewsItem | null>(null);
   const [activeDraftStatementItem, setActiveDraftStatementItem] = useState<ScrapedNewsItem | null>(null);
-  const [activePolicySubmissionItem, setActivePolicySubmissionItem] = useState<ScrapedNewsItem | null>(null);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
   // Video Summary Modal State (Google Veo 3)
@@ -590,6 +620,37 @@ export default function App() {
     };
   }, []);
 
+  // Listen for global custom event sop-status-updated to keep state reactive
+  useEffect(() => {
+    const handleSopStatusUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ articleId: string; status: 'NEW' | 'IN_PROGRESS' | 'DONE'; actionLabel?: string }>;
+      if (!customEvent.detail || !customEvent.detail.articleId) return;
+      const { articleId, status, actionLabel } = customEvent.detail;
+      setData((prev) => {
+        if (!prev || !prev.news) return prev;
+        let modified = false;
+        const updatedNews = prev.news.map((item) => {
+          if (item.id === articleId) {
+            modified = true;
+            return {
+              ...item,
+              handlingStatus: status,
+              handlingActionLabel: actionLabel || item.handlingActionLabel,
+              handledAt: status === 'DONE' ? new Date().toISOString() : item.handledAt,
+            };
+          }
+          return item;
+        });
+        return modified ? { ...prev, news: updatedNews } : prev;
+      });
+    };
+
+    window.addEventListener('sop-status-updated', handleSopStatusUpdated);
+    return () => {
+      window.removeEventListener('sop-status-updated', handleSopStatusUpdated);
+    };
+  }, []);
+
   const handleUpdateArticleStatus = useCallback(
     (
       articleId: string,
@@ -624,6 +685,42 @@ export default function App() {
         updatedAtStr: new Date().toISOString(),
       });
 
+      // 2b. Database persistence to /api/processed-actions
+      if (status === 'DONE') {
+        const item = data?.news?.find((n) => n.id === articleId);
+        if (item) {
+          const tier = getDirectiveTier(item);
+          const importance = tier === 'C4' ? 'URGENT' : tier === 'C3' ? 'IMPORTANT' : 'MONITORING';
+          fetch('/api/processed-actions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: item.id,
+              articleId: item.id,
+              title: item.title,
+              url: item.url || (item as any).link,
+              source: item.source,
+              summary: item.summary,
+              publishedAt: item.publishedAt,
+              handledAt: new Date().toISOString(),
+              tier,
+              importance,
+              directiveLabel: actionLabel || 'Đã xử lý hoàn tất',
+              handlingStatus: 'DONE',
+              handledBy: 'Lãnh đạo Bộ / Ban Chỉ đạo',
+              solutionSummary: (item as any).interventionBrief?.suggestedAction || 'Đã chỉ đạo xử lý hoàn tất',
+              sector: item.sector
+            })
+          })
+            .then(() => setProcessedCount((prev) => prev + 1))
+            .catch(() => {});
+        }
+      } else {
+        fetch(`/api/processed-actions/${articleId}`, { method: 'DELETE' })
+          .then(() => setProcessedCount((prev) => Math.max(0, prev - 1)))
+          .catch(() => {});
+      }
+
       // 3. Dispatch global custom event for listener re-renders
       window.dispatchEvent(
         new CustomEvent('sop-status-updated', {
@@ -638,12 +735,6 @@ export default function App() {
     if (!article) return;
     handleUpdateArticleStatus(article.id, 'IN_PROGRESS', 'Đã phát ngôn');
     setActiveDraftStatementItem(article);
-  };
-
-  const handleOpenPolicySubmission = (article?: ScrapedNewsItem | null) => {
-    if (!article) return;
-    handleUpdateArticleStatus(article.id, 'IN_PROGRESS', 'Điều chỉnh chính sách');
-    setActivePolicySubmissionItem(article);
   };
 
   const handleOpenGmailAlertModal = (article?: ScrapedNewsItem | null) => {
@@ -846,7 +937,6 @@ export default function App() {
       setActiveExecutiveUrgentModal(null);
       setActiveDeepDiveItem(null);
       setActiveDraftStatementItem(null);
-      setActivePolicySubmissionItem(null);
       setVideoContextArticle(null);
       setSelectedArticleForGmail(null);
       setActiveSentimentScoreBreakdownItem(null);
@@ -1492,7 +1582,7 @@ export default function App() {
         }
         if (e.key === '3') {
           e.preventDefault();
-          setCmsTab('briefing');
+          setCmsTab('processed');
           return;
         }
         if (e.key === '4') {
@@ -1567,10 +1657,6 @@ export default function App() {
           setActiveDraftStatementItem(null);
           return;
         }
-        if (activePolicySubmissionItem) {
-          setActivePolicySubmissionItem(null);
-          return;
-        }
         if (activeExecutiveUrgentModal) {
           setActiveExecutiveUrgentModal(null);
           return;
@@ -1591,7 +1677,6 @@ export default function App() {
     showTriggerModal,
     activeDeepDiveItem,
     activeDraftStatementItem,
-    activePolicySubmissionItem,
     activeExecutiveUrgentModal,
     timeRange,
     performScrape,
@@ -1601,12 +1686,12 @@ export default function App() {
   // Compute stats for CMS KPI bar
   const crisisCount = useMemo(() => {
     if (!data?.news) return 0;
-    return data.news.filter(isRiskArticle).length;
+    return data.news.filter((item) => item.handlingStatus !== 'DONE' && isRiskArticle(item)).length;
   }, [data?.news]);
 
   const highConfidenceCrisisCount = useMemo(() => {
     if (!data?.news) return 0;
-    return data.news.filter((item) => isRiskArticle(item, { requireHighConfidence: true })).length;
+    return data.news.filter((item) => item.handlingStatus !== 'DONE' && isRiskArticle(item, { requireHighConfidence: true })).length;
   }, [data?.news]);
 
   const positiveCount = useMemo(() => {
@@ -1668,6 +1753,7 @@ export default function App() {
   const interventionCount = useMemo(() => {
     if (!data?.news) return 0;
     return data.news.filter((item) => {
+      if (item.handlingStatus === 'DONE') return false;
       return Boolean(item.isEmergency) || isRiskArticle(item) || Boolean(item.executiveDirective);
     }).length;
   }, [data?.news]);
@@ -1834,7 +1920,10 @@ export default function App() {
       }
       if (selectedSentiment !== 'all' && item.sentiment !== selectedSentiment) return false;
       if (selectedImpact !== 'all' && item.impactLevel !== selectedImpact) return false;
-      if (showHighConfidenceOnly && !isRiskArticle(item, { requireHighConfidence: true })) return false;
+      if (showHighConfidenceOnly) {
+        if (item.handlingStatus === 'DONE') return false;
+        if (!isRiskArticle(item, { requireHighConfidence: true })) return false;
+      }
       if (showHighConfidenceBrightSpotOnly && !isBrightSpotArticle(item, { requireHighConfidence: true })) return false;
       if (showNeutralOnly && item.sentiment !== 'neutral') return false;
 
@@ -1853,6 +1942,7 @@ export default function App() {
 
       // Quick Needs Intervention filter
       if (showInterventionOnly) {
+        if (item.handlingStatus === 'DONE') return false;
         const needsIntervention = Boolean(item.isEmergency) || isRiskArticle(item) || Boolean(item.executiveDirective);
         if (!needsIntervention) return false;
       }
@@ -2103,6 +2193,9 @@ export default function App() {
         totalArticles={data?.totalFound || 0}
         crisisCount={crisisCount}
         positiveCount={positiveCount}
+        processedCount={processedCount}
+        expertOpinionsCount={expertOpinionsCount}
+        watchlistCount={watchlistCount}
         timeRange={timeRange}
         isLoading={isLoading || isResetInProgress}
         lastScannedTime={lastScannedTime}
@@ -2425,6 +2518,31 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB: VIỆC ĐÃ XỬ LÝ (RESOLVED / PROCESSED ACTIONS VIEW) */}
+          {cmsTab === 'processed' && (
+            <div className="space-y-6 animate-fadeIn">
+              <ProcessedActionsView
+                onOpenArticleDetail={(art) => setActiveDeepDiveItem(art)}
+                onRestoreAction={(artId) => handleUpdateArticleStatus(artId, 'NEW', 'Chờ xử lý')}
+                isDark={isDark}
+              />
+            </div>
+          )}
+
+          {/* TAB: Ý KIẾN NHÂN VẬT, TỔ CHỨC (EXPERT & STAKEHOLDER OPINIONS VIEW) */}
+          {cmsTab === 'experts' && (
+            <div className="space-y-6 animate-fadeIn">
+              <ExpertOpinionsView
+                newsArticles={data?.news || []}
+                onOpenArticleDetail={(artId) => {
+                  const found = data?.news?.find((n) => n.id === artId);
+                  if (found) setActiveDeepDiveItem(found);
+                }}
+                isDark={isDark}
+              />
+            </div>
+          )}
+
           {/* TAB 2: UNIFIED CMS CONTENT TABLE & SCRAPED NEWS DATABASE HUB */}
           {(cmsTab === 'table' || cmsTab === 'database') && (
             <div className="space-y-4 animate-fadeIn">
@@ -2441,7 +2559,6 @@ export default function App() {
                 newsItems={sortedAndFilteredNews}
                 onDeepDive={(n) => setActiveDeepDiveItem(n)}
                 onDraftStatement={(n) => setActiveDraftStatementItem(n)}
-                onPolicySubmission={(n) => setActivePolicySubmissionItem(n)}
                 onGenerateVideo={(n) => handleOpenVideoModal(n)}
                 onArticleCreated={handleArticleCreated}
                 onArticleUpdated={handleArticleUpdated}
@@ -2519,17 +2636,6 @@ export default function App() {
                   setIsAdvisorChatOpen(true);
                 }}
               />
-            </div>
-          )}
-
-          {/* TAB: FINE-TUNING STUDIO & DIRECT MODEL TRAINING */}
-          {cmsTab === 'finetune' && (
-            <div className="space-y-6 animate-fadeIn">
-              <MLPerformanceWidget
-                newsItems={sortedAndFilteredNews}
-                onNavigateToTableWithFilter={() => setCmsTab('table')}
-              />
-              <FineTuningStudio />
             </div>
           )}
 
@@ -2752,7 +2858,6 @@ export default function App() {
         item={activeDeepDiveItem}
         onClose={() => setActiveDeepDiveItem(null)}
         onDraftStatement={(n) => handleOpenDraftStatement(n)}
-        onPolicySubmission={(n) => handleOpenPolicySubmission(n)}
         onGmailAlert={(n) => handleOpenGmailAlertModal(n)}
         onOpenViolationDossier={(n) => handleOpenViolationDossier(n)}
         onOpenReaderComments={(n) => handleOpenReaderComments(n)}
@@ -2765,11 +2870,6 @@ export default function App() {
       <DraftStatementModal
         item={activeDraftStatementItem}
         onClose={() => setActiveDraftStatementItem(null)}
-      />
-
-      <PolicySubmissionModal
-        item={activePolicySubmissionItem}
-        onClose={() => setActivePolicySubmissionItem(null)}
       />
 
       {showExportModal && (
@@ -2839,7 +2939,6 @@ export default function App() {
           onClose={() => setActiveWarningPipelineItem(null)}
           onGmailAlert={(item) => handleOpenGmailAlertModal(item)}
           onDraftStatement={(item) => handleOpenDraftStatement(item)}
-          onPolicySubmission={(item) => handleOpenPolicySubmission(item)}
           onOverrideArticle={(updated) => {
             setData((prev) => ({
               ...prev,
@@ -2873,11 +2972,6 @@ export default function App() {
         onOpenDraftStatement={(article) => {
           if (article) handleOpenDraftStatement(article);
           else if (data?.news?.[0]) handleOpenDraftStatement(data.news[0]);
-          setIsAdvisorChatOpen(false);
-        }}
-        onOpenPolicySubmission={(article) => {
-          if (article) handleOpenPolicySubmission(article);
-          else if (data?.news?.[0]) handleOpenPolicySubmission(data.news[0]);
           setIsAdvisorChatOpen(false);
         }}
         onOpenDeepDive={(article) => {
@@ -2921,10 +3015,6 @@ export default function App() {
         onOpenDraftStatement={(article) => {
           if (article) handleOpenDraftStatement(article);
           else if (data?.news?.[0]) handleOpenDraftStatement(data.news[0]);
-        }}
-        onOpenPolicySubmission={(article) => {
-          if (article) handleOpenPolicySubmission(article);
-          else if (data?.news?.[0]) handleOpenPolicySubmission(data.news[0]);
         }}
         onOpenKeywordWeights={() => {
           setShowKeywordWeightModal(true);

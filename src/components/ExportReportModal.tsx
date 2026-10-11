@@ -885,7 +885,7 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
                         onClick={handlePrepareEmailDigest}
                         disabled={isGeneratingEmail}
                         className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 flex items-center gap-1 cursor-pointer transition"
-                        title="Tạo lại Báo cáo Email Digest với Gemini AI"
+                        title="Tham khảo AI phân tích lại"
                       >
                         <RefreshCw className={`w-3 h-3 ${isGeneratingEmail ? 'animate-spin' : ''}`} />
                         <span>Tạo lại AI</span>

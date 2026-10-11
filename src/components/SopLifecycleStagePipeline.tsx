@@ -1,189 +1,52 @@
 import React, { useState, useMemo } from 'react';
 import {
   ShieldAlert,
+  AlertTriangle,
   Zap,
   Clock,
   CheckCircle2,
-  AlertTriangle,
-  ChevronRight,
   Filter,
   X,
   FileText,
-  Users,
-  ChevronDown,
-  ChevronUp,
-  Radio,
-  Scale,
+  ChevronRight,
   Sparkles,
-  ArrowRight,
+  Radio,
+  Layers,
+  Scale,
+  Send,
   BellRing,
-  SlidersHorizontal
+  RotateCw
 } from 'lucide-react';
-import { ScrapedNewsItem, WarningAlertLevelType } from '../types';
+import { ScrapedNewsItem } from '../types';
+import { cleanHtmlTitle } from '../lib/htmlDecoder';
+import { clusterNewsArticles, ClusteredEventCard } from '../lib/eventClusteringEngine';
 import { extractQuantitativeBreakdown } from './QuantitativeFormulaBreakdown';
 import { Decree376ClassificationEngine } from '../lib/decree376ClassificationEngine';
+import { saveSopTrackingRecordToCloud } from '../lib/firebase';
+import {
+  isRoutineDigestOrSingleIncident,
+  isDistantWarningWeakSignal,
+  calculate3DayTopicFrequency,
+  getDirectiveImportance,
+  getDirectiveTier
+} from '../lib/policyFrictionEngine';
+import { ExecutiveDirectiveDetailModal } from './ExecutiveDirectiveDetailModal';
 
-export type SopLifecycleLevel = 'DISTANT' | 'EARLY' | 'RAPID' | 'EMERGENCY' | 'DIRECTIVE_URGENT' | 'STANDARD' | 'ALL';
+export type SopLifecycleLevel =
+  | 'URGENT'
+  | 'IMPORTANT'
+  | 'MONITORING'
+  | 'ALL'
+  | 'DIRECTIVE_URGENT'
+  | 'EMERGENCY'
+  | 'RAPID'
+  | 'EARLY'
+  | 'DISTANT'
+  | 'STANDARD';
 
-interface SopStageConfig {
-  id: 'DISTANT' | 'EARLY' | 'RAPID' | 'EMERGENCY';
-  stepNumber: number;
-  levelTitle: string;
-  codeName: string;
-  scoreRange: string;
-  badgeLabel: string;
-  slaTimeframe: string;
-  highlightTag?: string;
-  leadUnit: string;
-  icon: string;
-  colorTheme: {
-    bgActive: string;
-    bgDefault: string;
-    borderActive: string;
-    borderDefault: string;
-    text: string;
-    badgeBg: string;
-    ring: string;
-  };
-  triggerSignals: string[];
-  standardOperatingProcedure: string[];
-  keyDirective: string;
-}
-
-export const SOP_STAGE_CONFIGS: SopStageConfig[] = [
-  {
-    id: 'DISTANT',
-    stepNumber: 1,
-    levelTitle: 'Cảnh Báo Xa',
-    codeName: 'Early Horizon',
-    scoreRange: '20 – 39 điểm',
-    badgeLabel: '○ [SOP 1] CẢNH BÁO XA',
-    slaTimeframe: '24–48 giờ',
-    leadUnit: 'Tổ Giám sát Truyền thông & Phòng Chuyên môn',
-    icon: '○',
-    colorTheme: {
-      bgActive: 'bg-slate-900 text-white',
-      bgDefault: 'bg-white hover:bg-slate-50',
-      borderActive: 'border-slate-900 border-2 ring-2 ring-slate-900/20 shadow-md',
-      borderDefault: 'border-slate-300 hover:border-slate-400',
-      text: 'text-slate-950 font-black',
-      badgeBg: 'bg-slate-100 text-slate-950 border-slate-300 font-black',
-      ring: 'ring-slate-900'
-    },
-    triggerSignals: [
-      'Tín hiệu yếu (Weak signals) khởi phát',
-      'Chính sách mới ban hành xuất hiện các câu hỏi thăm dò',
-      'Chuyên gia bắt đầu bình luận phân tích; báo chí đưa tin trích dẫn nguyên văn với thái độ trung tính'
-    ],
-    standardOperatingProcedure: [
-      'Đưa sự việc vào danh sách giám sát tự động 24/7',
-      'Tổng hợp băn khoăn ban đầu để lập sẵn bộ Hỏi - Đáp nội bộ (Internal Q&A)',
-      'Chuẩn bị sẵn thông điệp định hướng thông tin',
-      'Tuyệt đối không lên tiếng vội vã trên báo chí để tránh thu hút sự chú ý không cần thiết'
-    ],
-    keyDirective: 'Giữ tĩnh lặng truyền thông, chủ động chuẩn bị khung dữ liệu giải trình nội bộ.'
-  },
-  {
-    id: 'EARLY',
-    stepNumber: 2,
-    levelTitle: 'Cảnh Báo Sớm',
-    codeName: 'Early Warning',
-    scoreRange: '40 – 59 điểm',
-    badgeLabel: '□ [SOP 2] CẢNH BÁO SỚM',
-    slaTimeframe: 'Trong 24 giờ',
-    highlightTag: 'PHÒNG NGỪA TRỌNG YẾU',
-    leadUnit: 'Cục/Vụ Chuyên môn Trực thuộc Bộ & Văn phòng Bộ',
-    icon: '□',
-    colorTheme: {
-      bgActive: 'bg-slate-900 text-white',
-      bgDefault: 'bg-white hover:bg-slate-50',
-      borderActive: 'border-slate-900 border-2 ring-2 ring-slate-900/20 shadow-md',
-      borderDefault: 'border-slate-300 hover:border-slate-400',
-      text: 'text-slate-950 font-black',
-      badgeBg: 'bg-slate-200 text-slate-950 border-slate-300 font-black',
-      ring: 'ring-slate-900'
-    },
-    triggerSignals: [
-      'Cùng một vướng mắc thủ tục nhưng nhiều địa phương/doanh nghiệp liên tục hỏi đi hỏi lại',
-      'Xuất hiện các bài phân tích sâu về điểm nghẽn thực thi chính sách trên báo chuyên ngành',
-      'Có nguy cơ biến thành làn sóng thắc mắc diện rộng nếu chậm giải thích'
-    ],
-    standardOperatingProcedure: [
-      'Làm việc ngay với Cục/Vụ chuyên môn để làm rõ bản chất vướng mắc nghiệp vụ',
-      'Hoàn thiện ngân hàng Q&A giải thích rõ ràng, đơn giản hóa câu chữ pháp lý',
-      'Chuẩn bị sẵn người phát ngôn chuyên trách',
-      'Soạn thảo bài hướng dẫn nghiệp vụ/Infographic để cung cấp cho báo chí',
-      'Thiết lập radar giám sát chặt chẽ trong 24 giờ'
-    ],
-    keyDirective: 'Giải quyết triệt để từ cấp phòng ngừa; không để vướng mắc kỹ thuật trở thành khủng hoảng chính trị - xã hội.'
-  },
-  {
-    id: 'RAPID',
-    stepNumber: 3,
-    levelTitle: 'Cảnh Báo Nhanh',
-    codeName: 'Rapid Alert',
-    scoreRange: '60 – 74 điểm',
-    badgeLabel: '◇ [SOP 3] CẢNH BÁO NHANH',
-    slaTimeframe: 'Trong ngày (12h)',
-    leadUnit: 'Lãnh đạo Bộ, Người phát ngôn & Cục Báo chí',
-    icon: '◇',
-    colorTheme: {
-      bgActive: 'bg-slate-900 text-white',
-      bgDefault: 'bg-white hover:bg-slate-50',
-      borderActive: 'border-slate-900 border-2 shadow-lg ring-2 ring-slate-900/20',
-      borderDefault: 'border-slate-400 hover:border-slate-500',
-      text: 'text-slate-950 font-black',
-      badgeBg: 'bg-slate-900 text-white font-black border-slate-900',
-      ring: 'ring-slate-900'
-    },
-    triggerSignals: [
-      'Nhiều cơ quan báo chí lớn cùng đăng bài phản ánh bất cập chính sách',
-      'Mạng xã hội tăng đột biến lượt chia sẻ và bình luận gay gắt',
-      'Bắt đầu xuất hiện câu hỏi trực diện quy kết trách nhiệm chỉ đạo điều hành của Bộ'
-    ],
-    standardOperatingProcedure: [
-      'Báo cáo nhanh Lãnh đạo Bộ ngay trong đầu buổi làm việc',
-      'Phân công đầu mối xử lý và phát ngôn chính thức ngay trong ngày (12 giờ)',
-      'Phối hợp các cơ quan báo chí chủ lực (Báo Nhân Dân, Cổng TTĐT Chính phủ, VTV...) đăng nội dung giải thích chính sách',
-      'Ban hành công văn hướng dẫn nghiệp vụ thống nhất toàn quốc để dập tắt độ vênh thực thi'
-    ],
-    keyDirective: 'Hành động thống nhất trong ngày; chủ động định hướng trước khi phiên giao ban ngày kế tiếp diễn ra.'
-  },
-  {
-    id: 'EMERGENCY',
-    stepNumber: 4,
-    levelTitle: 'Cảnh Báo Khẩn Cấp',
-    codeName: 'Emergency Alert',
-    scoreRange: '75 – 100 điểm',
-    badgeLabel: '△ [SOP 4] KHẨN CẤP',
-    slaTimeframe: 'Hỏa tốc 2–4 giờ',
-    highlightTag: 'KÍCH HOẠT TỔ PHẢN ỨNG NHANH',
-    leadUnit: 'Tổ Phản ứng Nhanh Khủng hoảng Bộ & Ban Cán sự Đảng',
-    icon: '△',
-    colorTheme: {
-      bgActive: 'bg-slate-900 text-white',
-      bgDefault: 'bg-white hover:bg-slate-50',
-      borderActive: 'border-slate-900 border-2 bg-slate-900 text-white shadow-xl ring-2 ring-slate-900/30',
-      borderDefault: 'border-slate-400 border-2 hover:border-slate-600',
-      text: 'text-slate-950 font-black',
-      badgeBg: 'bg-slate-900 text-white font-black border-slate-900',
-      ring: 'ring-slate-900'
-    },
-    triggerSignals: [
-      'Khủng hoảng truyền thông bùng phát; tốc độ lan truyền cực nhanh xuyên nền tảng',
-      'Xuất hiện tin đồn/tin sai lệch nghiêm trọng làm suy giảm niềm tin thị trường',
-      'Liên quan trực tiếp đến nhân sự lãnh đạo Bộ (thanh tra, pháp lý, trách nhiệm cá nhân)',
-      'Nguy cơ gây bất ổn thị trường tài chính, chứng khoán hoặc hệ thống thuế - kho bạc'
-    ],
-    standardOperatingProcedure: [
-      'Kích hoạt ngay Tổ phản ứng nhanh khủng hoảng truyền thông; không chờ báo cáo ngày',
-      'Tổ chức họp báo khẩn cấp hoặc phát hành thông cáo báo chí chính thức trong vòng 2–4 giờ',
-      'Chỉ định người phát ngôn duy nhất có thẩm quyền cung cấp thông tin',
-      'Phối hợp chặt chẽ với các cơ quan an ninh mạng để ngăn chặn và xử lý thông tin xuyên tạc'
-    ],
-    keyDirective: 'Ưu tiên cao nhất: Dập tắt tin đồn sai lệch trong 2-4h, bảo vệ ổn định thị trường tài chính quốc gia.'
-  }
-];
+export type ImportanceLevel = 'URGENT' | 'IMPORTANT' | 'MONITORING';
+export type ActionCategory = 'ALL' | 'STATEMENT' | 'LEGAL' | 'POLICY';
+export type HandlingStatus = 'ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 
 interface SopLifecycleStagePipelineProps {
   articles: ScrapedNewsItem[];
@@ -200,6 +63,42 @@ interface SopLifecycleStagePipelineProps {
   isDark?: boolean;
 }
 
+// Helper to determine importance level strictly based on Directive Tier:
+// - C4: Khẩn cấp -> 'URGENT'
+// - C3: Trọng yếu -> 'IMPORTANT'
+// - C1, C2: Bắt buộc xếp vào Theo dõi & Phòng ngừa -> 'MONITORING'
+function getArticleImportance(item: ScrapedNewsItem): ImportanceLevel {
+  return getDirectiveImportance(item);
+}
+
+// Helper to categorize required action
+function getArticleActionCategory(item: ScrapedNewsItem): 'STATEMENT' | 'LEGAL' | 'POLICY' {
+  const text = `${item.title} ${item.summary || ''} ${item.executiveDirective?.rootCause || ''}`.toLowerCase();
+  if (
+    text.includes('phát ngôn') ||
+    text.includes('thông cáo') ||
+    text.includes('tin đồn') ||
+    text.includes('báo chí') ||
+    text.includes('dư luận') ||
+    item.executiveDirective?.mediaStrategy?.type === 'crisis_resolution'
+  ) {
+    return 'STATEMENT';
+  }
+  if (
+    text.includes('thanh tra') ||
+    text.includes('kiểm tra') ||
+    text.includes('pháp lý') ||
+    text.includes('xử phạt') ||
+    text.includes('vi phạm') ||
+    text.includes('thẩm quyền') ||
+    text.includes('khởi tố') ||
+    item.executiveDirective?.mediaStrategy?.type === 'law_enforcement'
+  ) {
+    return 'LEGAL';
+  }
+  return 'POLICY';
+}
+
 export const SopLifecycleStagePipeline: React.FC<SopLifecycleStagePipelineProps> = ({
   articles = [],
   selectedLevel = 'ALL',
@@ -214,18 +113,40 @@ export const SopLifecycleStagePipeline: React.FC<SopLifecycleStagePipelineProps>
   activeAlertsCount = 0,
   isDark = false
 }) => {
-  const [showFullMatrix, setShowFullMatrix] = useState<boolean>(false);
-  // Sub-tab state for DIRECTIVE_URGENT tab ('ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED')
-  const [directiveSubTab, setDirectiveSubTab] = useState<'ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'>('ALL');
+  // Local state for dynamic handling status overrides (persisted to Firestore & local cache)
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, 'NEW' | 'IN_PROGRESS' | 'DONE'>>({});
+  const [directiveModalArticle, setDirectiveModalArticle] = useState<ScrapedNewsItem | null>(null);
 
-  // Consolidated list of urgent items requiring executive directive & immediate handling (Đồng bộ chuẩn 4 Cấp độ cảnh báo)
-  const directiveUrgentArticles = useMemo(() => {
+  // Sub-filters: Progress Status & Action Category
+  const [statusTab, setStatusTab] = useState<HandlingStatus>('ALL');
+  const [actionCategoryTab, setActionCategoryTab] = useState<ActionCategory>('ALL');
+  const [isClusteredMode, setIsClusteredMode] = useState<boolean>(true);
+  const [expandedClusterIds, setExpandedClusterIds] = useState<Set<string>>(new Set());
+
+  const toggleClusterExpand = (clusterId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedClusterIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clusterId)) next.delete(clusterId);
+      else next.add(clusterId);
+      return next;
+    });
+  };
+
+  // Consolidated list of all articles requiring action/directive
+  const actionableArticles = useMemo(() => {
     return articles.filter((item) => {
       if (item.isMarketDigest) return false;
+
+      // Thuật toán loại bỏ các bài "điểm tin / thông báo vụ việc / sự kiện đơn lẻ"
+      // không tạo băn khoăn chính sách (Loạt bài vĩ mô chung chung, nợ thuế/phạt hành chính cá nhân, tái cơ cấu bộ khác)
+      const routineCheck = isRoutineDigestOrSingleIncident(item.title, item.summary || item.snippet || '');
+      if (routineCheck.isRoutine) return false;
+
       const d376 = Decree376ClassificationEngine.classify(item);
       if (d376.isExcluded || d376.tier === 0) return false;
       const breakdown = extractQuantitativeBreakdown(item);
-      // Loại trừ hoàn toàn tin giám sát thường quy (< 20 điểm)
+      // Loại trừ tin thường quy an toàn (< 20 điểm)
       if (breakdown.level === 'STANDARD' || breakdown.riskScore < 20) return false;
       const isWarning =
         breakdown.level === 'EMERGENCY' ||
@@ -237,483 +158,762 @@ export const SopLifecycleStagePipeline: React.FC<SopLifecycleStagePipelineProps>
     });
   }, [articles]);
 
-  // Group articles by their warning level
-  const stageCounts = useMemo(() => {
-    const counts = {
-      DISTANT: 0,
-      EARLY: 0,
-      RAPID: 0,
-      EMERGENCY: 0,
-      DIRECTIVE_URGENT: directiveUrgentArticles.length,
-      STANDARD: 0,
-      TOTAL: articles.length
+  // Compute status of an article considering local overrides
+  const getEffectiveStatus = (article: ScrapedNewsItem): 'NEW' | 'IN_PROGRESS' | 'DONE' => {
+    if (statusOverrides[article.id]) {
+      return statusOverrides[article.id];
+    }
+    return article.handlingStatus || 'NEW';
+  };
+
+  // Group by Importance Level
+  const importanceCounts = useMemo(() => {
+    let urgent = 0;
+    let important = 0;
+    let monitoring = 0;
+
+    actionableArticles.forEach((item) => {
+      const imp = getArticleImportance(item);
+      if (imp === 'URGENT') urgent++;
+      else if (imp === 'IMPORTANT') important++;
+      else monitoring++;
+    });
+
+    return {
+      URGENT: urgent,
+      IMPORTANT: important,
+      MONITORING: monitoring,
+      TOTAL: actionableArticles.length
     };
+  }, [actionableArticles]);
 
-    articles.forEach((item) => {
-      const breakdown = extractQuantitativeBreakdown(item);
-      if (breakdown.level in counts) {
-        counts[breakdown.level as keyof typeof counts]++;
-      } else {
-        counts.STANDARD++;
-      }
-    });
+  // Determine active importance filter mapped from selectedLevel
+  const activeImportanceFilter: ImportanceLevel | 'ALL' = useMemo(() => {
+    if (selectedLevel === 'ALL' || selectedLevel === 'DIRECTIVE_URGENT') return 'ALL';
+    if (selectedLevel === 'URGENT' || selectedLevel === 'EMERGENCY') return 'URGENT';
+    if (selectedLevel === 'IMPORTANT' || selectedLevel === 'RAPID') return 'IMPORTANT';
+    if (selectedLevel === 'MONITORING' || selectedLevel === 'EARLY' || selectedLevel === 'DISTANT') return 'MONITORING';
+    return 'ALL';
+  }, [selectedLevel]);
 
-    return counts;
-  }, [articles, directiveUrgentArticles]);
-
-  // Filtered list when a specific stage is clicked
+  // Filtered articles list based on: Importance + Status Tab + Action Category Tab
   const filteredArticles = useMemo(() => {
-    if (selectedLevel === 'ALL') return [];
-    if (selectedLevel === 'DIRECTIVE_URGENT') return directiveUrgentArticles;
-    return articles.filter((item) => {
-      const breakdown = extractQuantitativeBreakdown(item);
-      return breakdown.level === selectedLevel;
+    return actionableArticles.filter((item) => {
+      // 1. Importance filter
+      if (activeImportanceFilter !== 'ALL') {
+        const imp = getArticleImportance(item);
+        if (imp !== activeImportanceFilter) return false;
+      }
+
+      // 2. Status tab filter
+      const currentStatus = getEffectiveStatus(item);
+      if (statusTab === 'PENDING' && currentStatus !== 'NEW') return false;
+      if (statusTab === 'IN_PROGRESS' && currentStatus !== 'IN_PROGRESS') return false;
+      if (statusTab === 'COMPLETED' && currentStatus !== 'DONE') return false;
+
+      // 3. Action category filter
+      if (actionCategoryTab !== 'ALL') {
+        const cat = getArticleActionCategory(item);
+        if (cat !== actionCategoryTab) return false;
+      }
+
+      return true;
     });
-  }, [articles, selectedLevel, directiveUrgentArticles]);
+  }, [actionableArticles, articles, activeImportanceFilter, statusTab, actionCategoryTab, statusOverrides]);
+
+  // Gom cụm tin bài trùng nhau theo Cosine / TF-IDF
+  const clusteredEvents: ClusteredEventCard[] = useMemo(() => {
+    if (!isClusteredMode || filteredArticles.length === 0) return [];
+    return clusterNewsArticles(filteredArticles, 65);
+  }, [filteredArticles, isClusteredMode]);
+
+  // Status counts for actionable items
+  const statusCounts = useMemo(() => {
+    let pending = 0;
+    let inProgress = 0;
+    let completed = 0;
+
+    actionableArticles.forEach((item) => {
+      const st = getEffectiveStatus(item);
+      if (st === 'NEW') pending++;
+      else if (st === 'IN_PROGRESS') inProgress++;
+      else if (st === 'DONE') completed++;
+    });
+
+    return {
+      ALL: actionableArticles.length,
+      PENDING: pending,
+      IN_PROGRESS: inProgress,
+      COMPLETED: completed
+    };
+  }, [actionableArticles, statusOverrides]);
+
+  // Action category counts
+  const actionCounts = useMemo(() => {
+    let statement = 0;
+    let legal = 0;
+    let policy = 0;
+
+    actionableArticles.forEach((item) => {
+      const cat = getArticleActionCategory(item);
+      if (cat === 'STATEMENT') statement++;
+      else if (cat === 'LEGAL') legal++;
+      else if (cat === 'POLICY') policy++;
+    });
+
+    return {
+      ALL: actionableArticles.length,
+      STATEMENT: statement,
+      LEGAL: legal,
+      POLICY: policy
+    };
+  }, [actionableArticles]);
+
+  // Handler to toggle handling status
+  const handleUpdateStatus = (article: ScrapedNewsItem, nextStatus: 'NEW' | 'IN_PROGRESS' | 'DONE') => {
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [article.id]: nextStatus
+    }));
+
+    const actionLabel =
+      nextStatus === 'IN_PROGRESS'
+        ? 'Đang xử lý & phân công'
+        : nextStatus === 'DONE'
+        ? 'Đã chỉ đạo hoàn tất'
+        : 'Chờ xử lý';
+
+    saveSopTrackingRecordToCloud(article.id, nextStatus, actionLabel);
+
+    if (nextStatus === 'DONE') {
+      const tier = getDirectiveTier(article);
+      const importance = tier === 'C4' ? 'URGENT' : tier === 'C3' ? 'IMPORTANT' : 'MONITORING';
+      fetch('/api/processed-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: article.id,
+          articleId: article.id,
+          title: article.title,
+          url: article.url || (article as any).link,
+          source: article.source,
+          summary: article.summary,
+          publishedAt: article.publishedAt,
+          handledAt: new Date().toISOString(),
+          tier,
+          importance,
+          directiveLabel: actionLabel,
+          handlingStatus: 'DONE',
+          handledBy: 'Lãnh đạo Bộ / Ban Chỉ đạo',
+          solutionSummary: (article as any).interventionBrief?.suggestedAction || 'Đã đọc và chỉ đạo xử lý hoàn tất',
+          sector: article.sector
+        })
+      }).catch(() => {});
+    } else {
+      fetch(`/api/processed-actions/${article.id}`, { method: 'DELETE' }).catch(() => {});
+    }
+  };
 
   return (
     <div className="p-5 sm:p-6 rounded-2xl border-2 transition-all space-y-5 bg-white border-slate-300 shadow-sm text-slate-900">
-      {/* 1. Header with Title & Quick Filter Reset */}
+      {/* 1. Header tinh gọn nhất cho lãnh đạo */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-200">
         <div className="flex items-center gap-3.5">
           <div className="p-3 rounded-xl bg-slate-900 text-white shadow-xs">
-            <Radio className="w-6 h-6 animate-pulse text-white" />
+            <Radio className="w-5 h-5 animate-pulse text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h3 className="text-lg sm:text-xl font-black uppercase tracking-wide text-slate-950">
-                Vòng Đời SOP 4 Cấp Độ Cảnh Báo Sớm Khủng Hoảng
+                Chỉ Đạo & Xử Lý Khẩn
               </h3>
-              <span className="px-3 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-950 border border-emerald-300 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Ngưỡng Tự Động Chuẩn Hóa NĐ 376</span>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-950 border border-rose-300 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
+                <span>{actionableArticles.length} bài cần xử lý</span>
               </span>
             </div>
-            <p className="text-xs sm:text-sm font-extrabold text-slate-900 mt-1">
-              Hệ thống tự động phân loại 4 cấp độ cảnh báo (C4: 75–100đ, C3: 60–74đ, C2: 40–59đ, C1: 20–39đ, Mức 0: &lt;20đ thường quy) bám sát Cẩm nang 100 tình huống – Loại trừ 100% điểm tin thị trường
+            <p className="text-xs sm:text-sm font-extrabold text-slate-700 mt-1">
+              Phân loại tin bài cần xử lý theo mức độ quan trọng & tiến độ tác chiến
             </p>
           </div>
         </div>
 
-        {/* Filter State / Actions */}
+        {/* Nút thao tác nhanh & Xóa lọc */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Integrated Quick Tab: Vấn đề cần chỉ đạo & xử lý khẩn */}
-          <button
-            onClick={() => onSelectLevel(selectedLevel === 'DIRECTIVE_URGENT' ? 'ALL' : 'DIRECTIVE_URGENT')}
-            className={`px-3.5 py-2 rounded-xl border-2 text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-2 shadow-sm ${
-              selectedLevel === 'DIRECTIVE_URGENT'
-                ? 'bg-rose-700 text-white border-rose-800 ring-2 ring-rose-500/50'
-                : 'bg-rose-50 hover:bg-rose-100 text-rose-950 border-rose-300'
-            }`}
-            title="Lọc danh sách các vấn đề khẩn cấp & cần chỉ đạo xử lý trực tiếp trong quy trình SOP"
-          >
-            <AlertTriangle className={`w-4 h-4 ${selectedLevel === 'DIRECTIVE_URGENT' ? 'text-white' : 'text-rose-600 animate-pulse'}`} />
-            <span>Vấn đề cần chỉ đạo & xử lý khẩn ({directiveUrgentArticles.length})</span>
-            {selectedLevel === 'DIRECTIVE_URGENT' && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded">✓</span>}
-          </button>
-
-          {selectedLevel !== 'ALL' ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-slate-950 flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300">
-                <Filter className="w-4 h-4 text-slate-900" />
-                <span>Đang lọc: {
-                  selectedLevel === 'DIRECTIVE_URGENT' ? 'Sự việc khẩn & Cần chỉ đạo' :
-                  selectedLevel === 'DISTANT' ? 'Cấp 1: Cảnh Báo Xa' :
-                  selectedLevel === 'EARLY' ? 'Cấp 2: Cảnh Báo Sớm' :
-                  selectedLevel === 'RAPID' ? 'Cấp 3: Cảnh Báo Nhanh' :
-                  selectedLevel === 'EMERGENCY' ? 'Cấp 4: Cảnh Báo Khẩn Cấp' : 'Giám sát Thường quy'
-                } ({filteredArticles.length} bài)</span>
-              </span>
-              <button
-                onClick={() => onSelectLevel('ALL')}
-                className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-950"
-                title="Hủy lọc và hiển thị tất cả bài viết"
-              >
-                <X className="w-4 h-4 text-slate-900" />
-                <span>Xóa lọc</span>
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs sm:text-sm font-extrabold text-slate-800 italic">
-              Bấm vào từng cấp độ bên dưới để lọc tức thì danh sách bài viết
-            </span>
+          {(activeImportanceFilter !== 'ALL' || statusTab !== 'ALL' || actionCategoryTab !== 'ALL') && (
+            <button
+              onClick={() => {
+                onSelectLevel('ALL');
+                setStatusTab('ALL');
+                setActionCategoryTab('ALL');
+              }}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-950"
+              title="Xóa bộ lọc và hiển thị toàn bộ"
+            >
+              <X className="w-4 h-4 text-slate-900" />
+              <span>Xem tất cả ({actionableArticles.length})</span>
+            </button>
           )}
 
-          <button
-            onClick={() => setShowFullMatrix(!showFullMatrix)}
-            className="px-3.5 py-2 rounded-xl border-2 text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-950"
-          >
-            <span>{showFullMatrix ? 'Thu gọn SOP' : 'Tra cứu Bảng Ma trận SOP'}</span>
-            {showFullMatrix ? <ChevronUp className="w-4 h-4 text-slate-900" /> : <ChevronDown className="w-4 h-4 text-slate-900" />}
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Visual 4-Level Pipeline Cards Grid (Dynamic Executive CSS Grid) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-5">
-        {SOP_STAGE_CONFIGS.map((stage) => {
-          const isSelected = selectedLevel === stage.id;
-          const count = stageCounts[stage.id] || 0;
-          const isPrimaryPriority = stage.id === 'EMERGENCY' || stage.id === 'RAPID';
-
-          // Dynamic column span logic for executive tablets:
-          // Primary SOP status cards (EMERGENCY / RAPID) take full width (col-span-12) or prioritized 6 cols on tablet (md:),
-          // and equal 3 cols on extra-large screens (xl:col-span-3).
-          let colSpanClass = 'md:col-span-6 xl:col-span-3';
-          if (stage.id === 'EMERGENCY') {
-            colSpanClass = count > 0 
-              ? 'md:col-span-12 xl:col-span-3' 
-              : 'md:col-span-12 lg:col-span-6 xl:col-span-3';
-          } else if (stage.id === 'RAPID') {
-            colSpanClass = count > 0 
-              ? 'md:col-span-12 xl:col-span-3' 
-              : 'md:col-span-6 xl:col-span-3';
-          }
-
-          return (
-            <div
-              key={stage.id}
-              onClick={() => onSelectLevel(isSelected ? 'ALL' : stage.id)}
-              className={`${colSpanClass} p-5 sm:p-6 rounded-2xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden select-none min-h-[240px] ${
-                isSelected
-                  ? 'bg-slate-950 text-white border-slate-950 shadow-xl ring-2 ring-slate-900/30'
-                  : isPrimaryPriority && count > 0
-                  ? 'bg-white border-slate-900 hover:border-black text-slate-950 shadow-md'
-                  : 'bg-white hover:bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-950 shadow-xs'
-              }`}
+          {onOpenBatchAlertDrawer && activeAlertsCount > 0 && (
+            <button
+              onClick={onOpenBatchAlertDrawer}
+              className="px-3.5 py-1.5 rounded-xl border-2 text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-950"
             >
-              {/* Highlight Tag for Level 2 or 4 */}
-              {stage.highlightTag && (
-                <div className="absolute top-0 right-0">
-                  <span className={`px-3 py-1 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-bl-xl border-l border-b ${
-                    isSelected
-                      ? 'bg-white text-slate-950 border-slate-300'
-                      : 'bg-slate-950 text-white border-slate-950'
-                  }`}>
-                    {stage.highlightTag}
-                  </span>
-                </div>
-              )}
-
-              {/* Card Top: Level & Count */}
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xl font-black ${isSelected ? 'text-white' : 'text-slate-950'}`}>{stage.icon}</span>
-                    <span className={`text-sm sm:text-base font-black uppercase tracking-wider ${isSelected ? 'text-slate-200' : 'text-slate-950'}`}>
-                      Cấp {stage.stepNumber}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono border ${
-                      isSelected
-                        ? 'bg-white text-slate-950 border-white'
-                        : count > 0 && isPrimaryPriority
-                        ? 'bg-slate-950 text-white border-slate-950'
-                        : 'bg-slate-200 text-slate-950 border-slate-300'
-                    }`}>
-                      {count} bài viết
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <h4 className={`text-lg sm:text-xl font-black ${isSelected ? 'text-white' : 'text-slate-950'}`}>
-                    {stage.levelTitle}
-                  </h4>
-                  <div className={`flex items-center gap-2 text-xs sm:text-sm font-mono font-extrabold mt-1 ${
-                    isSelected ? 'text-slate-300' : 'text-slate-900'
-                  }`}>
-                    <span>{stage.codeName}</span>
-                    <span>•</span>
-                    <span className={`font-black ${isSelected ? 'text-white' : 'text-slate-950'}`}>{stage.scoreRange}</span>
-                  </div>
-                </div>
-
-                <div className={`text-xs sm:text-sm font-bold line-clamp-3 leading-relaxed mb-3 ${
-                  isSelected ? 'text-slate-200' : 'text-slate-900'
-                }`}>
-                  {stage.triggerSignals[0]}
-                </div>
-              </div>
-
-              {/* Card Bottom: SLA, Lead Unit & Directive */}
-              <div className={`pt-3 border-t space-y-2.5 ${isSelected ? 'border-slate-800' : 'border-slate-200'}`}>
-                <div className="flex items-center justify-between text-xs sm:text-sm font-extrabold">
-                  <span className={`flex items-center gap-1 ${isSelected ? 'text-slate-300' : 'text-slate-800'}`}>
-                    <Clock className="w-4 h-4" />
-                    SLA Tác Chiến:
-                  </span>
-                  <span className={`font-black ${isSelected ? 'text-white' : 'text-slate-950'}`}>{stage.slaTimeframe}</span>
-                </div>
-
-                <div className="flex items-center justify-between text-xs sm:text-sm font-extrabold gap-2">
-                  <span className={`truncate max-w-[200px] font-bold ${isSelected ? 'text-slate-300' : 'text-slate-900'}`} title={stage.leadUnit}>
-                    🏛️ {stage.leadUnit.split('&')[0]}
-                  </span>
-                  <span className={`font-black flex items-center gap-0.5 shrink-0 ${isSelected ? 'text-white' : 'text-slate-950'}`}>
-                    <span>{isSelected ? 'Đang lọc' : 'Lọc tin'}</span>
-                    <ChevronRight className="w-4 h-4 text-slate-950" />
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Routine / Standard Monitoring Bar */}
-      <div className={`px-5 py-3.5 rounded-2xl border-2 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer transition ${
-        selectedLevel === 'STANDARD'
-          ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-          : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-950'
-      }`}
-        onClick={() => onSelectLevel(selectedLevel === 'STANDARD' ? 'ALL' : 'STANDARD')}
-      >
-        <div className="flex items-center gap-2">
-          <Scale className={`w-4 h-4 ${selectedLevel === 'STANDARD' ? 'text-white' : 'text-slate-900'}`} />
-          <span className="font-black">
-            Giám sát Thường quy & Điều hành Định kỳ (&lt; 20 điểm):
-          </span>
-          <span className={`hidden md:inline font-bold ${selectedLevel === 'STANDARD' ? 'text-slate-200' : 'text-slate-800'}`}>
-            Xử phạt vi phạm hành chính, điểm báo thị trường giao dịch khách quan, quy chuẩn thực thi pháp luật.
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="font-mono font-black">
-            {stageCounts.STANDARD} bài viết an toàn
-          </span>
-          <span className="font-extrabold underline">
-            {selectedLevel === 'STANDARD' ? '✓ Đang lọc' : 'Lọc xem ➔'}
-          </span>
+              <BellRing className="w-4 h-4 text-rose-700" />
+              <span>Thông báo nóng ({activeAlertsCount})</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 3. Filtered Articles Preview List if a stage is active */}
-      {selectedLevel !== 'ALL' && (
-        <div className="p-5 rounded-2xl border-2 border-slate-300 bg-slate-50 space-y-4 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black uppercase text-slate-950 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-slate-900" />
-                Danh Sách Bài Viết Đang Lọc Theo Cấp Độ ({filteredArticles.length})
+      {/* VÒNG ĐỜI SOP XỬ LÝ KHỦNG HOẢNG & CAN THIỆP (TINH GỌN CHO LÃNH ĐẠO) */}
+      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between text-xs font-black text-slate-800 uppercase tracking-wide mb-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-slate-900" />
+            <span>VÒNG ĐỜI SOP TIẾP NHẬN & XỬ LÝ KHỦNG HOẢNG (4 ĐẦU MỤC CHÍNH)</span>
+          </div>
+          <span className="text-slate-500 font-mono text-[11px] font-bold">Quy trình rút gọn cho Lãnh đạo</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          <div className="p-2.5 rounded-lg bg-white border border-slate-300 font-bold flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">1</span>
+            <span className="truncate text-slate-900">1. Tiếp nhận & Phân cấp (C1-C4)</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-slate-300 font-bold flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">2</span>
+            <span className="truncate text-slate-900">2. Khoảng trống thông tin</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-slate-300 font-bold flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-rose-700 text-white flex items-center justify-center text-[10px] font-black shrink-0">3</span>
+            <span className="truncate text-slate-900">3. Đề xuất can thiệp</span>
+          </div>
+          <div className="p-2.5 rounded-lg bg-white border border-slate-300 font-bold flex items-center gap-2 shadow-2xs">
+            <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-black shrink-0">4</span>
+            <span className="truncate text-slate-900">4. Xuất giải pháp & Hoàn tất</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Ba mức độ quan trọng tinh gọn thay thế 4 cấp độ cảnh báo cũ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+        {/* Thẻ 1: Khẩn Cấp (C4) */}
+        <div
+          onClick={() => onSelectLevel(activeImportanceFilter === 'URGENT' ? 'ALL' : 'URGENT')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative select-none flex flex-col justify-between min-h-[140px] ${
+            activeImportanceFilter === 'URGENT'
+              ? 'bg-rose-900 text-white border-rose-950 shadow-lg ring-2 ring-rose-500/50'
+              : importanceCounts.URGENT > 0
+              ? 'bg-rose-50/80 hover:bg-rose-100/90 border-rose-300 text-rose-950'
+              : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-900'
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg">🚨</span>
+                <span className="text-xs sm:text-sm font-black uppercase tracking-wider">
+                  Khẩn Cấp (C4)
+                </span>
+              </div>
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-black font-mono border ${
+                  activeImportanceFilter === 'URGENT'
+                    ? 'bg-white text-rose-950 border-white'
+                    : 'bg-rose-700 text-white border-rose-800'
+                }`}
+              >
+                {importanceCounts.URGENT} bài
               </span>
             </div>
-            <span className="text-xs font-bold text-slate-700">
-              Nhấp bài viết để phân tích sâu hoặc xem toàn cảnh
-            </span>
+            <p
+              className={`text-xs font-extrabold leading-snug ${
+                activeImportanceFilter === 'URGENT' ? 'text-rose-100' : 'text-slate-700'
+              }`}
+            >
+              Điểm nóng dư luận, khủng hoảng truyền thông hoặc rủi ro pháp lý cấp bách (C4).
+            </p>
           </div>
+          <div
+            className={`pt-2.5 mt-2 border-t flex items-center justify-between text-xs font-black ${
+              activeImportanceFilter === 'URGENT' ? 'border-rose-800 text-rose-200' : 'border-rose-200 text-rose-900'
+            }`}
+          >
+            <span>SLA: Hỏa tốc trong 2–4 giờ</span>
+            <span>{activeImportanceFilter === 'URGENT' ? '✓ Đang lọc' : 'Lọc tin ➔'}</span>
+          </div>
+        </div>
 
-          {/* If DIRECTIVE_URGENT, render Progress Status Tabs (Segmented Control) */}
-          {selectedLevel === 'DIRECTIVE_URGENT' && (() => {
-            const pendingCount = filteredArticles.filter(a => !a.handlingStatus || a.handlingStatus === 'NEW').length;
-            const inProgressCount = filteredArticles.filter(a => a.handlingStatus === 'IN_PROGRESS').length;
-            const completedCount = filteredArticles.filter(a => a.handlingStatus === 'DONE').length;
-
-            return (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-200 text-xs font-black w-fit">
-                <button
-                  type="button"
-                  onClick={() => setDirectiveSubTab('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                    directiveSubTab === 'ALL' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-950'
-                  }`}
-                >
-                  Tất cả ({filteredArticles.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDirectiveSubTab('PENDING')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    directiveSubTab === 'PENDING' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-950'
-                  }`}
-                >
-                  <span>Chờ xử lý</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-white font-mono text-[10px]">
-                    {pendingCount}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDirectiveSubTab('IN_PROGRESS')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    directiveSubTab === 'IN_PROGRESS' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-950'
-                  }`}
-                >
-                  <span>Đang xử lý</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-blue-500 text-white font-mono text-[10px]">
-                    {inProgressCount}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDirectiveSubTab('COMPLETED')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    directiveSubTab === 'COMPLETED' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-950'
-                  }`}
-                >
-                  <span>Đã hoàn tất</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-600 text-white font-mono text-[10px]">
-                    {completedCount}
-                  </span>
-                </button>
+        {/* Thẻ 2: Trọng Yếu (C3) */}
+        <div
+          onClick={() => onSelectLevel(activeImportanceFilter === 'IMPORTANT' ? 'ALL' : 'IMPORTANT')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative select-none flex flex-col justify-between min-h-[140px] ${
+            activeImportanceFilter === 'IMPORTANT'
+              ? 'bg-slate-900 text-white border-slate-950 shadow-lg ring-2 ring-slate-500/50'
+              : importanceCounts.IMPORTANT > 0
+              ? 'bg-amber-50/80 hover:bg-amber-100/90 border-amber-300 text-amber-950'
+              : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-900'
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg">⚡</span>
+                <span className="text-xs sm:text-sm font-black uppercase tracking-wider">
+                  Trọng Yếu (C3)
+                </span>
               </div>
-            );
-          })()}
-
-          {filteredArticles.length === 0 ? (
-            <div className="py-6 text-center text-xs sm:text-sm font-bold text-slate-600">
-              Không có bài viết nào thuộc cấp độ này trong phiên theo dõi hiện tại.
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-black font-mono border ${
+                  activeImportanceFilter === 'IMPORTANT'
+                    ? 'bg-white text-slate-950 border-white'
+                    : 'bg-amber-700 text-white border-amber-800'
+                }`}
+              >
+                {importanceCounts.IMPORTANT} bài
+              </span>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-200 max-h-80 overflow-y-auto space-y-2.5 pr-1">
-              {filteredArticles.map((article) => {
-                const breakdown = extractQuantitativeBreakdown(article);
-                return (
+            <p
+              className={`text-xs font-extrabold leading-snug ${
+                activeImportanceFilter === 'IMPORTANT' ? 'text-slate-200' : 'text-slate-700'
+              }`}
+            >
+              Chính sách mới phản ánh nhiều băn khoăn hoặc xuất hiện dày đặc trong 3 ngày qua (C3).
+            </p>
+          </div>
+          <div
+            className={`pt-2.5 mt-2 border-t flex items-center justify-between text-xs font-black ${
+              activeImportanceFilter === 'IMPORTANT' ? 'border-slate-800 text-slate-300' : 'border-amber-200 text-amber-900'
+            }`}
+          >
+            <span>SLA: Xử lý trong ngày (12 giờ)</span>
+            <span>{activeImportanceFilter === 'IMPORTANT' ? '✓ Đang lọc' : 'Lọc tin ➔'}</span>
+          </div>
+        </div>
+
+        {/* Thẻ 3: Theo Dõi & Phòng Ngừa (C1, C2) */}
+        <div
+          onClick={() => onSelectLevel(activeImportanceFilter === 'MONITORING' ? 'ALL' : 'MONITORING')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative select-none flex flex-col justify-between min-h-[140px] ${
+            activeImportanceFilter === 'MONITORING'
+              ? 'bg-slate-900 text-white border-slate-950 shadow-lg ring-2 ring-slate-500/50'
+              : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-900'
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg">📌</span>
+                <span className="text-xs sm:text-sm font-black uppercase tracking-wider">
+                  Theo Dõi & Phòng Ngừa (C1, C2)
+                </span>
+              </div>
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-black font-mono border ${
+                  activeImportanceFilter === 'MONITORING'
+                    ? 'bg-white text-slate-950 border-white'
+                    : 'bg-slate-200 text-slate-950 border-slate-300'
+                }`}
+              >
+                {importanceCounts.MONITORING} bài
+              </span>
+            </div>
+            <p
+              className={`text-xs font-extrabold leading-snug ${
+                activeImportanceFilter === 'MONITORING' ? 'text-slate-200' : 'text-slate-700'
+              }`}
+            >
+              Các tin tức ở mức C1 và C2 (cảnh báo sớm, cảnh báo xa, lấp lửng, điểm mới chính sách) chỉ để ở mức theo dõi và phòng ngừa.
+            </p>
+          </div>
+          <div
+            className={`pt-2.5 mt-2 border-t flex items-center justify-between text-xs font-black ${
+              activeImportanceFilter === 'MONITORING' ? 'border-slate-800 text-slate-300' : 'border-slate-200 text-slate-800'
+            }`}
+          >
+            <span>SLA: Theo dõi 24–48 giờ (Phòng ngừa)</span>
+            <span>{activeImportanceFilter === 'MONITORING' ? '✓ Đang lọc' : 'Lọc tin ➔'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Thanh điều hướng lọc Tiến độ & Phân loại hành động (Segmented Controls) */}
+      <div className="p-3 sm:p-4 rounded-xl bg-slate-100 border border-slate-300 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        {/* Bộ lọc Tiến độ */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-black uppercase text-slate-800 mr-1">Tiến độ:</span>
+          <div className="inline-flex p-1 rounded-xl bg-slate-200 border border-slate-300">
+            <button
+              onClick={() => setStatusTab('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                statusTab === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              Tất cả ({statusCounts.ALL})
+            </button>
+            <button
+              onClick={() => setStatusTab('PENDING')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                statusTab === 'PENDING' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>Chờ xử lý</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-slate-400/40 text-slate-950 text-[10px] font-mono">
+                {statusCounts.PENDING}
+              </span>
+            </button>
+            <button
+              onClick={() => setStatusTab('IN_PROGRESS')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                statusTab === 'IN_PROGRESS' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>Đang xử lý</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-200 text-blue-950 text-[10px] font-mono">
+                {statusCounts.IN_PROGRESS}
+              </span>
+            </button>
+            <button
+              onClick={() => setStatusTab('COMPLETED')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1.5 ${
+                statusTab === 'COMPLETED' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>Đã hoàn tất</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-200 text-emerald-950 text-[10px] font-mono">
+                {statusCounts.COMPLETED}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bộ lọc Loại hành động */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-black uppercase text-slate-800 mr-1">Hành động:</span>
+          <div className="inline-flex p-1 rounded-xl bg-slate-200 border border-slate-300">
+            <button
+              onClick={() => setActionCategoryTab('ALL')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                actionCategoryTab === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              Tất cả
+            </button>
+            <button
+              onClick={() => setActionCategoryTab('STATEMENT')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                actionCategoryTab === 'STATEMENT' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>🎙️ Phát ngôn ({actionCounts.STATEMENT})</span>
+            </button>
+            <button
+              onClick={() => setActionCategoryTab('LEGAL')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                actionCategoryTab === 'LEGAL' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>⚖️ Pháp lý ({actionCounts.LEGAL})</span>
+            </button>
+            <button
+              onClick={() => setActionCategoryTab('POLICY')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                actionCategoryTab === 'POLICY' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-800 hover:text-slate-950'
+              }`}
+            >
+              <span>📜 Chính sách ({actionCounts.POLICY})</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Danh sách bài viết cần chỉ đạo & xử lý */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-black text-slate-700 px-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>
+              DANH SÁCH BÀI VIẾT CẦN XỬ LÝ ({isClusteredMode ? `${clusteredEvents.length} cụm / ${filteredArticles.length} bài` : `${filteredArticles.length} bài`})
+              {activeImportanceFilter !== 'ALL' && ` • LỌC: ${activeImportanceFilter === 'URGENT' ? 'KHẨN CẤP' : activeImportanceFilter === 'IMPORTANT' ? 'TRỌNG YẾU' : 'THEO DÕI'}`}
+              {statusTab !== 'ALL' && ` • TIẾN ĐỘ: ${statusTab === 'PENDING' ? 'CHỜ XỬ LÝ' : statusTab === 'IN_PROGRESS' ? 'ĐANG XỬ LÝ' : 'ĐÃ HOÀN TẤT'}`}
+              {actionCategoryTab !== 'ALL' && ` • HÀNH ĐỘNG: ${actionCategoryTab === 'STATEMENT' ? 'PHÁT NGÔN' : actionCategoryTab === 'LEGAL' ? 'PHÁP LÝ' : 'CHÍNH SÁCH'}`}
+            </span>
+            <button
+              onClick={() => setIsClusteredMode(!isClusteredMode)}
+              className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                isClusteredMode
+                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
+                  : 'bg-slate-200 text-slate-800 border-slate-300'
+              }`}
+              title="Gom cụm các bài viết trùng lặp hoặc dẫn nguồn từ nhau"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{isClusteredMode ? `✓ Đang gom cụm (${clusteredEvents.length} cụm)` : 'Gom cụm tin trùng'}</span>
+            </button>
+          </div>
+          <span className="text-slate-500 font-bold">Nhấp vào bài viết để xem toàn văn</span>
+        </div>
+
+        {filteredArticles.length === 0 ? (
+          <div className="py-10 text-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-600 space-y-2">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+            <p className="text-sm font-black text-slate-800">
+              Không có bài viết nào phù hợp với bộ lọc đã chọn.
+            </p>
+            <p className="text-xs font-extrabold text-slate-500">
+              Tất cả các vấn đề trong nhóm này đã được xử lý hoặc không có rủi ro phát sinh.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200 border border-slate-300 rounded-xl overflow-hidden bg-white max-h-[500px] overflow-y-auto">
+            {(isClusteredMode
+              ? clusteredEvents
+              : filteredArticles.map((a) => ({
+                  id: a.id,
+                  totalArticles: 1,
+                  originArticle: a,
+                  clusterTitle: a.title,
+                  originSource: a.source,
+                  echoArticles: [],
+                  allSources: [a.source || 'Báo chí'],
+                }))
+            ).map((clusterItem: any) => {
+              const article = clusterItem.originArticle || clusterItem;
+              const isCluster = Boolean(clusterItem.totalArticles && clusterItem.totalArticles > 1);
+              const isExpanded = expandedClusterIds.has(clusterItem.id);
+              const breakdown = extractQuantitativeBreakdown(article);
+              const tier = getDirectiveTier(article);
+              const importance = getArticleImportance(article);
+              const actionCat = getArticleActionCategory(article);
+              const status = getEffectiveStatus(article);
+              const freqInfo = calculate3DayTopicFrequency(article, articles);
+              const distantSignal = isDistantWarningWeakSignal(article.title, article.summary || article.snippet || '');
+
+              return (
+                <div key={clusterItem.id} className="transition">
                   <div
-                    key={article.id}
-                    onClick={() => onSelectArticle && onSelectArticle(article)}
-                    className="pt-3 pb-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                    onClick={() => setDirectiveModalArticle(article)}
+                    className="p-4 hover:bg-slate-50 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3.5"
                   >
-                    <div className="space-y-1 min-w-0 flex-1">
+                    {/* Cột trái: Thông tin chính */}
+                    <div className="space-y-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-black px-2.5 py-0.5 rounded bg-slate-900 text-white">
-                          {article.source || 'Báo chí'}
+                        {/* Huy hiệu Cụm tin nếu có nhiều nguồn cùng đưa */}
+                        {isCluster && (
+                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-indigo-700 text-white flex items-center gap-1 shadow-2xs">
+                            <Layers className="w-3 h-3" />
+                            <span>Cụm tin: {clusterItem.totalArticles} nguồn báo</span>
+                          </span>
+                        )}
+
+                        {/* Badge Mức độ quan trọng chuẩn C1-C4 */}
+                        {importance === 'URGENT' && (
+                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-rose-700 text-white flex items-center gap-1 shadow-2xs">
+                            <span>🚨 KHẨN CẤP (C4)</span>
+                          </span>
+                        )}
+                        {importance === 'IMPORTANT' && (
+                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-amber-600 text-white flex items-center gap-1 shadow-2xs">
+                            <span>⚡ TRỌNG YẾU (C3{freqInfo.frequency > 1 ? ` - 3 ngày: ${freqInfo.frequency} bài` : ''})</span>
+                          </span>
+                        )}
+                        {importance === 'MONITORING' && (
+                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-slate-700 text-white flex items-center gap-1 shadow-2xs">
+                            <span>📌 THEO DÕI & PHÒNG NGỪA ({tier === 'C2' ? 'C2 - Cảnh báo sớm' : 'C1 - Cảnh báo xa'})</span>
+                          </span>
+                        )}
+
+                        {/* Huy hiệu nhận diện tín hiệu lấp lửng / điểm mới chính sách */}
+                        {distantSignal.isDistant && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-purple-100 text-purple-950 border border-purple-300 flex items-center gap-1" title={distantSignal.reason}>
+                            <span>💡 Tín hiệu lấp lửng / Điểm mới chính sách</span>
+                          </span>
+                        )}
+
+                        {/* Badge Loại hành động */}
+                        <span className="text-[11px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-900 border border-slate-300">
+                          {actionCat === 'STATEMENT' ? '🎙️ Phát ngôn' : actionCat === 'LEGAL' ? '⚖️ Pháp lý' : '📜 Chính sách'}
                         </span>
-                        <span className="text-xs font-mono font-bold text-slate-700">
+
+                        {/* Nguồn & Thời gian */}
+                        <span className="text-xs font-bold text-slate-700">
+                          <strong className="text-slate-900">{clusterItem.originSource || article.source || 'Báo chí'}</strong>
+                          {isCluster && <span className="text-indigo-600 ml-1 font-semibold">(Đăng đầu tiên)</span>}
+                          {' • '}
                           {article.publishedTimeStr || article.timeAgo || 'Vừa cập nhật'}
                         </span>
-                        {(article.handlingStatus === 'IN_PROGRESS' || article.handlingActionLabel) && (
-                          <span className="text-xs font-black px-2.5 py-0.5 rounded bg-blue-600 text-white border border-blue-700 flex items-center gap-1 shadow-2xs">
-                            <span className="w-2 h-2 rounded-full bg-blue-200 animate-pulse" />
-                            <span>🔵 Đang xử lý {article.handlingActionLabel ? `• ${article.handlingActionLabel}` : ''}</span>
+
+                        {/* Trạng thái tiến độ badge */}
+                        {status === 'IN_PROGRESS' && (
+                          <span className="text-[11px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                            <span>Đang xử lý</span>
                           </span>
                         )}
-                        {(article.isAlertTriggered || article.triggerRuleName) && (
-                          <span className="text-xs font-black px-2.5 py-0.5 rounded bg-rose-700 text-white border border-rose-800 flex items-center gap-1 shadow-2xs">
-                            <span className="w-2 h-2 rounded-full bg-rose-200 animate-ping" />
-                            <span>🚨 CẢNH BÁO KÍCH HOẠT {article.triggerRuleName ? `• ${article.triggerRuleName}` : ''}</span>
-                          </span>
-                        )}
-                        {breakdown.D > 0 && (
-                          <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-200 text-slate-950 border border-slate-300">
-                            ⚠️ Vênh chỉ đạo (D={breakdown.D})
+                        {status === 'DONE' && (
+                          <span className="text-[11px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-950 border border-emerald-300 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                            <span>Đã hoàn tất</span>
                           </span>
                         )}
                       </div>
-                      <h5 className="text-xs sm:text-sm font-black text-slate-950 hover:text-slate-800 transition truncate">
-                        {article.title}
-                      </h5>
+
+                      <h4 className="text-sm font-black text-slate-950 hover:text-slate-800 transition line-clamp-2 leading-snug">
+                        {cleanHtmlTitle(clusterItem.clusterTitle || article.title, article.summary)}
+                      </h4>
+
+                      {article.summary && (
+                        <p className="text-xs font-semibold text-slate-600 line-clamp-1">
+                          {article.summary}
+                        </p>
+                      )}
+
+                      {/* Nút xem các nguồn dẫn lại */}
+                      {isCluster && (
+                        <div className="pt-1 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleClusterExpand(clusterItem.id, e)}
+                            className="text-[11px] font-black text-indigo-700 hover:text-indigo-900 underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>{isExpanded ? '▲ Thu gọn các báo khác' : `▼ Xem thêm ${clusterItem.echoArticles.length} nguồn báo khác cùng đưa tin`}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
+                    {/* Cột phải: Điểm rủi ro & Nút thao tác lãnh đạo */}
+                    <div className="flex items-center gap-2.5 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-200">
+                      <div className="text-left md:text-right mr-1">
                         <div className="text-xs sm:text-sm font-mono font-black text-slate-950">
-                          Risk: {breakdown.riskScore}đ
+                          {breakdown.riskScore}đ Rủi ro
                         </div>
-                        <div className="text-xs font-mono font-bold text-slate-700">
-                          S={breakdown.S} · D={breakdown.D} · V={breakdown.V} · I={breakdown.I}
+                        <div className="text-[11px] font-bold text-amber-700">
+                          SLA: {tier === 'C4' ? 'Hỏa tốc 2–4h' : tier === 'C3' ? 'Trong ngày 12h' : 'Theo dõi 24–48h'}
                         </div>
                       </div>
+
+                      {/* Nút đổi trạng thái 1-chạm */}
+                      {status === 'NEW' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(article, 'IN_PROGRESS');
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-950 font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="Đánh dấu đang thụ lý giải quyết"
+                        >
+                          <span>Nhận xử lý</span>
+                        </button>
+                      )}
+
+                      {status === 'IN_PROGRESS' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(article, 'DONE');
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                          title="Đánh dấu đã hoàn thành xử lý"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Hoàn tất</span>
+                        </button>
+                      )}
+
+                      {status === 'DONE' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateStatus(article, 'IN_PROGRESS');
+                          }}
+                          className="p-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-xs transition cursor-pointer"
+                          title="Mở lại trạng thái đang xử lý"
+                        >
+                          <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                        </button>
+                      )}
+
+                      {/* Nút Soạn văn bản */}
                       {onDraftStatement && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             onDraftStatement(article);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-950 font-black text-xs transition cursor-pointer flex items-center gap-1"
-                          title="Soạn thảo thông cáo báo chí / văn bản chỉ đạo"
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                          title="Soạn thảo thông cáo báo chí hoặc văn bản chỉ đạo"
                         >
-                          <FileText className="w-3.5 h-3.5 text-slate-950" />
-                          <span>Soạn văn bản</span>
+                          <FileText className="w-3.5 h-3.5 text-white" />
+                          <span className="hidden sm:inline">Chỉ đạo</span>
                         </button>
                       )}
-                      {onOpenWarningPipeline && (
+
+                      {/* Nút gửi cảnh báo Gmail nếu khẩn cấp */}
+                      {importance === 'URGENT' && onOpenGmailAlertModal && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onOpenWarningPipeline(article);
+                            onOpenGmailAlertModal(article);
                           }}
-                          className="p-2 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-950 transition cursor-pointer"
-                          title="Xem Mô hình 3 Tầng & 4 Cấp độ cảnh báo"
+                          className="p-2 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-950 font-black text-xs transition cursor-pointer"
+                          title="Bắn cảnh báo khẩn cấp qua Gmail Lãnh đạo"
                         >
-                          <ShieldAlert className="w-4 h-4 text-slate-950" />
+                          <Send className="w-3.5 h-3.5 text-rose-700" />
                         </button>
                       )}
-                      <ChevronRight className="w-4 h-4 text-slate-800" />
+
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* 4. Full SOP Matrix Breakdown Table (Accordion View) */}
-      {showFullMatrix && (
-        <div className="p-5 sm:p-6 rounded-2xl border-2 border-slate-300 bg-slate-50 space-y-4 animate-fadeIn">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-300">
-            <h4 className="text-xs sm:text-sm font-black uppercase text-slate-950 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-900" />
-              Bảng Ma Trận Bốn Cấp Độ Cảnh Báo Và Kịch Bản Phản Ứng Tác Chiến (SOP)
-            </h4>
-            <span className="text-xs font-bold text-slate-700">Trích xuất nguyên bản Báo Cáo Chuyên Đề</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm border-collapse">
-              <thead>
-                <tr className="border-b-2 border-slate-300 text-xs font-black uppercase text-slate-900 bg-slate-200">
-                  <th className="py-3 px-3.5 w-48">Cấp Độ Cảnh Báo</th>
-                  <th className="py-3 px-3.5 w-32">Điểm Rủi Ro</th>
-                  <th className="py-3 px-3.5 w-72">Dấu Hiệu Kỹ Thuật Điển Hình</th>
-                  <th className="py-3 px-3.5">Kịch Bản Hành Động Tiêu Chuẩn (SOP)</th>
-                  <th className="py-3 px-3.5 w-36">Đơn Vị Chủ Trì</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 bg-white">
-                {SOP_STAGE_CONFIGS.map((stage) => (
-                  <tr key={stage.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3.5 px-3.5 align-top">
-                      <div className="font-black text-slate-950 flex items-center gap-1.5 text-sm sm:text-base">
-                        <span>{stage.icon}</span>
-                        <span>{stage.levelTitle}</span>
-                      </div>
-                      <div className="text-xs font-mono font-extrabold text-slate-800 mt-0.5">{stage.codeName}</div>
-                      <div className="text-xs text-slate-900 font-black mt-1">SLA: {stage.slaTimeframe}</div>
-                    </td>
-                    <td className="py-3.5 px-3.5 align-top font-mono font-black text-slate-950 text-sm">
-                      {stage.scoreRange}
-                    </td>
-                    <td className="py-3.5 px-3.5 align-top space-y-1 text-slate-900 font-extrabold">
-                      {stage.triggerSignals.map((sig, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 leading-snug">
-                          <span className="text-slate-950 font-black shrink-0">•</span>
-                          <span>{sig}</span>
+                  {/* Danh sách bài đưa tin tiếp theo khi mở cụm */}
+                  {isCluster && isExpanded && clusterItem.echoArticles && (
+                    <div className="bg-slate-50/90 border-t border-slate-200 px-6 py-2.5 space-y-1.5 text-xs">
+                      <span className="font-black text-slate-700 uppercase block text-[10px]">
+                        Các cơ quan báo chí dẫn nguồn hoặc đưa tin tiếp theo:
+                      </span>
+                      {clusterItem.echoArticles.map((echo: any, idx: number) => (
+                        <div
+                          key={idx}
+                          onClick={() => setDirectiveModalArticle(echo.article)}
+                          className="p-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-400 transition cursor-pointer flex items-center justify-between gap-2"
+                        >
+                          <span className="text-slate-800 font-medium truncate">
+                            <strong className="text-slate-900 mr-1">{echo.article.source || 'Báo khác'}:</strong>
+                            {cleanHtmlTitle(echo.article.title)}
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-slate-500 shrink-0">
+                            +{echo.lagMinutes > 0 ? `${echo.lagMinutes}p` : 'đồng thời'} • {echo.similarity}% tương đồng
+                          </span>
                         </div>
                       ))}
-                    </td>
-                    <td className="py-3.5 px-3.5 align-top space-y-1 text-slate-900 font-extrabold">
-                      {stage.standardOperatingProcedure.map((sop, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 leading-snug">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-900 shrink-0 mt-0.5" />
-                          <span>{sop}</span>
-                        </div>
-                      ))}
-                      <div className="pt-2 text-xs font-black text-slate-950 italic">
-                        💡 {stage.keyDirective}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-3.5 align-top text-slate-900 font-extrabold text-xs">
-                      {stage.leadUnit}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* MODAL 3 PHẦN CHÍNH YẾU SINH BỞI AI CHO LÃNH ĐẠO */}
+      {directiveModalArticle && (
+        <ExecutiveDirectiveDetailModal
+          article={directiveModalArticle}
+          isOpen={Boolean(directiveModalArticle)}
+          onClose={() => setDirectiveModalArticle(null)}
+          isHandled={getEffectiveStatus(directiveModalArticle) === 'DONE'}
+          onToggleHandled={() => {
+            const currentStatus = getEffectiveStatus(directiveModalArticle);
+            const nextStatus = currentStatus === 'DONE' ? 'IN_PROGRESS' : 'DONE';
+            handleUpdateStatus(directiveModalArticle, nextStatus);
+          }}
+          onOpenGmailAlertModal={onOpenGmailAlertModal}
+          onDraftStatement={onDraftStatement}
+          allArticles={articles}
+          isDark={isDark}
+        />
       )}
     </div>
   );

@@ -101,6 +101,11 @@ service cloud.firestore {
       allow read, write, delete: if true;
     }
 
+    // SOP Lifecycle Tracking Records
+    match /sop_tracking_records/{recordId} {
+      allow read, write, delete: if true;
+    }
+
     // Fallback rule for all collections
     match /{document=**} {
       allow read, write: if true;

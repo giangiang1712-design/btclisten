@@ -408,7 +408,7 @@ export const DeepDiveModal: React.FC<DeepDiveModalProps> = ({
                 {isGeneratingBullets && (
                   <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-300 flex items-center gap-2 animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
-                    <span>Gemini đang tổng hợp 3 ý tác động tới mục tiêu điều hành của BTC...</span>
+                    <span>Tham khảo AI đang tổng hợp 3 ý tác động tới mục tiêu điều hành của BTC...</span>
                   </div>
                 )}
 

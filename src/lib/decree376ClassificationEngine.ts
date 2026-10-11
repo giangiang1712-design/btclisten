@@ -22,6 +22,7 @@ import {
   findMatchingDecree376Scenario,
   Decree376AlertTier
 } from './decree376Handbook100Scenarios';
+import { isRoutineDigestOrSingleIncident, isDistantWarningWeakSignal } from './policyFrictionEngine';
 
 export interface Decree376ClassificationResult {
   tier: Decree376AlertTier;
@@ -180,13 +181,32 @@ export class Decree376ClassificationEngine {
     const lowerTitle = title.toLowerCase();
 
     // =========================================================================
-    // 0. LOẠI TRỪ 100% CÁC ĐIỂM TIN THỊ TRƯỜNG THƯỜNG NHẬT & THÔNG BÁO HÀNH CHÍNH
+    // 0. LOẠI TRỪ 100% CÁC ĐIỂM TIN THỊ TRƯỜNG THƯỜNG NHẬT, THÔNG BÁO HÀNH CHÍNH & VỤ VIỆC ĐƠN LẺ
     // (Bám sát yêu cầu chỉ đạo của Lãnh đạo:
-    //  - Loại trừ tin điểm tin: VN-Index tuần tới dao động trong vùng 1.700-1.760
-    //  - Loại trừ thông báo định kỳ: Doanh nghiệp địa ốc TPHCM đứng đầu danh sách nợ thuế
-    //    chưa có sự lan tỏa đa kênh trong 3 ngày qua, là thông báo công khai định kỳ,
-    //    không thể coi là cảnh báo hay khoảng trống thông tin)
+    //  - Loại trừ chuyên đề/diễn đàn vĩ mô: "Loạt bài: Để đầu tư công tạo lực kéo tăng trưởng... Bài 1: Giải ngân đầu tư công - Không chỉ là câu chuyện tỷ lệ"
+    //  - Loại trừ thông báo vụ việc/xử phạt/nợ thuế cá biệt: Tăng Nhật Tuệ, BGI Group, v.v.
+    //  - Loại trừ điểm tin lộ trình các bộ khác: Tái cơ cấu EVN...)
     // =========================================================================
+    const routineDigestCheck = isRoutineDigestOrSingleIncident(title, summary);
+    if (routineDigestCheck.isRoutine) {
+      return {
+        tier: 0,
+        tierLabelVi: 'Mức 0: Loại trừ / Điểm tin sự kiện thường quy (Không cảnh báo)',
+        sopLevel: 0,
+        sopLevelNameVi: 'Mức 0: Giám sát thường nhật / Không cảnh báo',
+        alertLevel: 'STANDARD',
+        gapLevel: 'NO_GAP',
+        isAlertWarranted: false,
+        isExcluded: true,
+        leadAgency,
+        decree376Clause: 'Căn cứ Cẩm nang NĐ 376: Điểm tin thời sự, thông báo vụ việc đơn lẻ hoặc chuyên đề vĩ mô không tạo băn khoăn chính sách',
+        classificationReason: routineDigestCheck.reason || 'Điểm tin hoặc thông báo vụ việc đơn lẻ không tạo băn khoăn về chính sách.',
+        natureOfInformationVacuum: 'Không có khoảng trống thông tin chính sách.',
+        actionScriptVi: 'Gán nhãn Mức 0, lưu kho dữ liệu thường nhật, triệt tiêu báo động giả.',
+        calibratedScores: { S: 2, D: 0, V: 0.1, I: 0.2, riskScore: 2.0 }
+      };
+    }
+
     if (/doanh nghiệp địa ốc tphcm đứng đầu danh sách nợ thuế/i.test(title)) {
       return {
         tier: 0,
@@ -316,7 +336,7 @@ export class Decree376ClassificationEngine {
     // - Ách tắc giải ngân vốn đầu tư công, độ vênh chính sách giữa các bộ ngành
     // =========================================================================
     const isLevel2EarlyWarning =
-      /người mua ô tô vội tất toán khoản vay khi phát hiện lãi suất|phản ánh trái chiều về xử lý mã số thuế|phân biệt dn cố tình né thuế.*tạm hoãn xuất cảnh|sẽ không tạm hoãn xuất cảnh với người bị mạo danh|vì sao đã bán đất nhiều năm vẫn nhận thông báo nợ thuế|kiến nghị dùng vốn đầu tư công xây nhà ở xã hội|bảo hiểm.*từ chối bồi thường.*bộ tài chính phản hồi|kiến nghị mức trợ cấp hưu trí xã hội|không xử phạt tràn lan|phong tỏa tài khoản|nợ thuế hơn 14 triệu|nợ thuế gần 10 tỷ|nợ hơn 5 tỉ|nợ thuế.*chục năm|nợ thuế của citigym|phản hồi thông tin nợ thuế của tập đoàn masan|nợ thuế nhóm công ty điền quân|hộ kinh doanh lỡ sai hóa đơn.*hướng dẫn sửa|truy thu.*tiền thuế|bgi group bị phạt và truy thu|vướng mắc hoàn thuế|kiểm tra thực địa hoàn thuế.*đọng vốn|tháo gỡ điểm nghẽn.*đầu tư công|không thể giải ngân theo kế hoạch.*điều chuyển vốn|loạt bài.*giải ngân đầu tư công.*không chỉ là câu chuyện tỷ lệ|kiểm tra liên ngành.*trốn đóng bhxh|công đoàn giám sát doanh nghiệp nợ bảo hiểm|chuyên gia thuế lý giải nguyên nhân|tái cơ cấu evn: hai bộ vênh nhau|vi phạm.*nghĩa vụ công bố thông tin.*trái phiếu|tiếp tục bị xử phạt|xử phạt về vi phạm.*trái phiếu|gỡ điểm nghẽn từ chính sách thuế|bị phong tỏa tài khoản/i.test(title);
+      /người mua ô tô vội tất toán khoản vay khi phát hiện lãi suất|phản ánh trái chiều về xử lý mã số thuế|phân biệt dn cố tình né thuế.*tạm hoãn xuất cảnh|sẽ không tạm hoãn xuất cảnh với người bị mạo danh|vì sao đã bán đất nhiều năm vẫn nhận thông báo nợ thuế|kiến nghị dùng vốn đầu tư công xây nhà ở xã hội|bảo hiểm.*từ chối bồi thường.*bộ tài chính phản hồi|kiến nghị mức trợ cấp hưu trí xã hội|không xử phạt tràn lan|phong tỏa tài khoản|nợ thuế hơn 14 triệu|nợ thuế gần 10 tỷ|nợ thuế.*chục năm|hộ kinh doanh lỡ sai hóa đơn.*hướng dẫn sửa|vướng mắc hoàn thuế|kiểm tra thực địa hoàn thuế.*đọng vốn|tháo gỡ điểm nghẽn.*đầu tư công|không thể giải ngân theo kế hoạch.*điều chuyển vốn|kiểm tra liên ngành.*trốn đóng bhxh|công đoàn giám sát doanh nghiệp nợ bảo hiểm|chuyên gia thuế lý giải nguyên nhân|vi phạm.*nghĩa vụ công bố thông tin.*trái phiếu|tiếp tục bị xử phạt|xử phạt về vi phạm.*trái phiếu|gỡ điểm nghẽn từ chính sách thuế|bị phong tỏa tài khoản/i.test(title);
 
     if (isLevel2EarlyWarning) {
       const isCarLoanShock = /người mua ô tô vội tất toán khoản vay khi phát hiện lãi suất/i.test(title);
@@ -358,11 +378,13 @@ export class Decree376ClassificationEngine {
     }
 
     // =========================================================================
-    // 4. KIỂM TRA MỨC 1: CẢNH BÁO XA / DỰ BÁO VĨ MÔ / QUY HOẠCH / THÔNG TIN TRỰC TIẾP (SOP CẤP 1: 20 - 39đ)
-    // - Thông tin phát trực tiếp (Live coverage) cần thêm bài báo sau đó để làm rõ (Đề án EVN)
-    // - Dự báo chính sách dài hạn, đề xuất xóa nợ thuế >10 năm, chuẩn mực IFRS
+    // 4. KIỂM TRA MỨC 1: CẢNH BÁO XA / DỰ BÁO VĨ MÔ / QUY HOẠCH / TÍN HIỆU YẾU
+    // - Tính chất lấp lửng, gây khó hiểu, chính sách mới có nhiều điểm mới gây khó khăn
+    // - Thông tin phát trực tiếp (Live coverage) cần thêm bài báo sau đó để làm rõ
     // =========================================================================
+    const distantWeakSignal = isDistantWarningWeakSignal(title, summary);
     const isLevel1DistantWarning =
+      distantWeakSignal.isDistant ||
       /trực tiếp bộ tài chính trình đề án tái cấu trúc evn|đề án tái cấu trúc evn phù hợp với thị trường điện cạnh tranh|tháo gỡ mâu thuẫn giữa quy hoạch tỉnh và quy hoạch vùng|đề xuất sửa đổi luật thuế tiêu thụ đặc biệt|đề xuất ưu đãi thuế suất 0% đối với ô tô|bộ tài chính đề xuất giảm 30% tiền thuế đất|đề xuất xóa khoản nợ thuế trên 10 năm|chuyển đổi báo cáo tài chính sang ifrs|chưa đề xuất bổ sung vốn trung hạn|tận dụng mọi chính sách để kiểm soát lạm phát|hai kịch bản lạm phát.*giữ ổn định mặt bằng giá|sửa đổi, bổ sung một số điều của các thông tư.*phí, lệ phí|cpi 9 tháng.*nằm trong vùng mục tiêu kiểm soát|tín dụng xanh mở rộng, thị trường trái phiếu bắt đầu phát triển|nới trần vốn, tăng dư địa cho nền kinh tế|el niño.*phép thử mới với ngành bảo hiểm|vay vốn quốc tế qua trung tâm tài chính|chứng khoán trước biến số lãi suất|tự động xử lý hồ sơ hoàn thuế|đua phát hành trái phiếu|vì sao.*đua phát hành trái phiếu|lúng túng|băn khoăn|hỏi cách|thủ tục thế nào|áp dụng mẫu biểu nào|tra cứu mã hs/i.test(title);
 
     if (isLevel1DistantWarning) {
@@ -373,7 +395,9 @@ export class Decree376ClassificationEngine {
       const I = 0.4;
       const riskScore = 28;
 
-      const reason = isLiveBroadcast
+      const reason = distantWeakSignal.isDistant
+        ? (distantWeakSignal.reason || 'Bài viết có tính chất lấp lửng, gây khó hiểu hoặc chính sách mới có nhiều điểm mới gây khó khăn, bỡ ngỡ bước đầu.')
+        : isLiveBroadcast
         ? 'Thông tin phát trực tiếp phiên trình bày Đề án tái cấu trúc EVN; có tính chất thông tin bước đầu, cần tiếp tục xuất bản các bài báo chuyên sâu tiếp sau để làm rõ chi tiết cho công chúng.'
         : 'Dự báo xu hướng chính sách dài hạn, kịch bản điều hành vĩ mô, nghiên cứu cải cách chuẩn mực hoặc đề xuất điều chỉnh cơ chế trung hạn.';
 

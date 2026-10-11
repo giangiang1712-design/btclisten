@@ -26,6 +26,8 @@ import {
   Flame,
   AlertTriangle,
   Minus,
+  CheckCircle2,
+  Users,
 } from 'lucide-react';
 import { useTheme } from '../lib/theme';
 import { useI18n } from '../lib/i18n';
@@ -152,17 +154,23 @@ export const ExecutiveCommandBar: React.FC<ExecutiveCommandBarProps> = ({
       icon: <LayoutDashboard className="w-3.5 h-3.5" />,
     },
     {
+      id: 'processed',
+      labelVi: 'Việc đã xử lý',
+      labelEn: 'Resolved',
+      icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
+    },
+    {
+      id: 'experts',
+      labelVi: 'Ý kiến Nhân vật',
+      labelEn: 'Opinions',
+      icon: <Users className="w-3.5 h-3.5 text-amber-500" />,
+    },
+    {
       id: 'table',
       labelVi: 'Dòng tin bài',
       labelEn: 'Articles',
       icon: <Table className="w-3.5 h-3.5" />,
       count: totalFound,
-    },
-    {
-      id: 'briefing',
-      labelVi: 'Tham mưu & Dự thảo',
-      labelEn: 'Briefing',
-      icon: <FileCheck2 className="w-3.5 h-3.5" />,
     },
     {
       id: 'sources',
@@ -406,73 +414,54 @@ export const ExecutiveCommandBar: React.FC<ExecutiveCommandBarProps> = ({
           <div className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs min-w-0">
           {/* Left: Interactive Quick KPI Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar py-0.5 min-w-0 flex-1">
-            {/* KPI 1: Total Scanned */}
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-black shrink-0 ${
-                isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-800'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="text-slate-600 dark:text-slate-300 font-bold">{isVietnamese ? 'Tổng bài:' : 'Total:'}</span>
-              <strong className="font-mono text-slate-950 dark:text-white font-black text-sm">{totalFound}</strong>
-            </div>
-
-            {/* Quick Filter: Tin Nóng (High Impact) */}
-            {onToggleHighImpactOnly && (
-              <button
-                id="filter-high-impact-btn"
-                onClick={() => {
-                  onToggleHighImpactOnly();
-                  if (cmsTab !== 'table') onSelectTab('table');
-                }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs ${
-                  showHighImpactOnly
-                    ? 'bg-amber-600 text-white border-amber-700'
-                    : isDark
-                    ? 'bg-amber-950/40 border-amber-800/80 text-amber-300 hover:bg-amber-950/70'
-                    : 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
-                }`}
-                title={isVietnamese ? `Lọc tin nóng có tác động cao nhất (${highImpactCount} bài)` : `High Impact filter (${highImpactCount})`}
-              >
-                <Flame className={`w-4 h-4 ${showHighImpactOnly ? 'text-white' : 'text-amber-500 animate-pulse'}`} />
-                <span>{isVietnamese ? 'Tin nóng:' : 'High Impact:'}</span>
-                <span className="font-mono font-black text-sm">{highImpactCount}</span>
-                {showHighImpactOnly && (
-                  <span className="text-[10px] font-black uppercase ml-0.5 px-1.5 py-0.2 bg-white/25 rounded">
-                    ✕
-                  </span>
-                )}
-              </button>
-            )}
-
             {/* Quick Link: Vấn đề cần chỉ đạo & xử lý khẩn -> Direct to SOP 4-Level Early Warning Lifecycle */}
-            {(onToggleInterventionOnly || onToggleHighConfidenceOnly) && (
-              <button
-                id="filter-urgent-intervention-btn"
-                onClick={() => {
-                  onSelectTab('dashboard');
-                  if (onToggleInterventionOnly) onToggleInterventionOnly();
-                  else if (onToggleHighConfidenceOnly) onToggleHighConfidenceOnly();
-                }}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs ${
-                  showInterventionOnly || showHighConfidenceOnly
-                    ? 'bg-rose-700 text-white border-rose-800 shadow-md ring-2 ring-rose-500/50'
-                    : isDark
-                    ? 'bg-rose-950/60 border-rose-800/90 text-rose-200 hover:bg-rose-900/70'
-                    : 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100'
-                }`}
-                title="Chuyển ngay tới mục Vòng Đời SOP 4 Cấp Độ để xem & chỉ đạo xử lý khẩn"
-              >
-                <AlertTriangle className={`w-4 h-4 ${showInterventionOnly || showHighConfidenceOnly ? 'text-white animate-bounce' : 'text-rose-600 dark:text-rose-400'}`} />
-                <span>Vấn đề cần chỉ đạo & xử lý khẩn (Vòng Đời SOP):</span>
-                <span className="font-mono font-black text-sm px-1.5 py-0.2 rounded bg-rose-950/40 dark:bg-rose-900/60 text-white">
-                  {Math.max(interventionCount, crisisCount)}
-                </span>
-                <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white border border-rose-500 shadow-xs">
-                  SOP KHẨN CẤP
-                </span>
-              </button>
-            )}
+            {(onToggleInterventionOnly || onToggleHighConfidenceOnly) && (() => {
+              const count = Math.max(interventionCount, crisisCount);
+              const isAllDone = count === 0;
+              return (
+                <button
+                  id="filter-urgent-intervention-btn"
+                  onClick={() => {
+                    onSelectTab('dashboard');
+                    if (onToggleInterventionOnly) onToggleInterventionOnly();
+                    else if (onToggleHighConfidenceOnly) onToggleHighConfidenceOnly();
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs ${
+                    showInterventionOnly || showHighConfidenceOnly
+                      ? isAllDone
+                        ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-500/50'
+                        : 'bg-rose-700 text-white border-rose-800 shadow-md ring-2 ring-rose-500/50'
+                      : isAllDone
+                      ? isDark
+                        ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-300 hover:bg-emerald-900/50'
+                        : 'bg-emerald-50 border-emerald-300 text-emerald-950 hover:bg-emerald-100'
+                      : isDark
+                      ? 'bg-rose-950/60 border-rose-800/90 text-rose-200 hover:bg-rose-900/70'
+                      : 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100'
+                  }`}
+                  title="Chuyển ngay tới mục Chỉ đạo & Xử lý khẩn"
+                >
+                  {isAllDone ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className={`w-4 h-4 ${showInterventionOnly || showHighConfidenceOnly ? 'text-white animate-bounce' : 'text-rose-600 dark:text-rose-400'}`} />
+                  )}
+                  <span>Vấn đề cần chỉ đạo & xử lý khẩn:</span>
+                  <span className={`font-mono font-black text-sm px-1.5 py-0.2 rounded ${
+                    isAllDone ? 'bg-emerald-950/60 text-emerald-300' : 'bg-rose-950/40 dark:bg-rose-900/60 text-white'
+                  }`}>
+                    {count}
+                  </span>
+                  <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded border shadow-xs ${
+                    isAllDone
+                      ? 'bg-emerald-600 text-white border-emerald-500'
+                      : 'bg-rose-600 text-white border-rose-500'
+                  }`}>
+                    {isAllDone ? '✓ ĐÃ HOÀN TẤT' : 'SOP KHẨN CẤP'}
+                  </span>
+                </button>
+              );
+            })()}
 
             {/* KPI 3: Bright Spots (Positive) Filter */}
             <button

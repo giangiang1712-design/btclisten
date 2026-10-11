@@ -375,7 +375,7 @@ export const ReSummarizePanel: React.FC<ReSummarizePanelProps> = ({
           {isLoading && (
             <div className="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/30 flex items-center justify-center gap-3 text-xs text-indigo-300 animate-pulse">
               <Loader2 className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
-              <span>Gemini AI đang cấu trúc lại nội dung chuyên biệt cho {activeAudienceConfig.shortLabel}...</span>
+              <span>Tham khảo AI đang cấu trúc lại nội dung chuyên biệt cho {activeAudienceConfig.shortLabel}...</span>
             </div>
           )}
 
@@ -411,7 +411,7 @@ export const ReSummarizePanel: React.FC<ReSummarizePanelProps> = ({
                   {tailoredSummary.isAiGenerated && (
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
                       <Sparkles className="w-2.5 h-2.5" />
-                      <span>Gemini AI Powered</span>
+                      <span>Tham khảo AI</span>
                     </span>
                   )}
                 </div>

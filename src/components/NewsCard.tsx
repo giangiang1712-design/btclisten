@@ -6,7 +6,7 @@ import { isRiskArticle, calculateRiskScore, calculateBrightSpotScore } from '../
 import { getSentimentDeepReasoning } from '../lib/negativeNewsClusterEngine';
 import { useTheme } from '../lib/theme';
 import { SourceBrandBadge } from './SourceBrandBadge';
-import { decodeHtmlEntities } from '../lib/htmlDecoder';
+import { decodeHtmlEntities, cleanHtmlTitle } from '../lib/htmlDecoder';
 import { fetchArticleTldrSummary } from '../services/api';
 import { AutoActionProposer } from './AutoActionProposer';
 import { globalNewsDatabase } from '../lib/newsDatabase';
@@ -153,16 +153,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
   const mgField = get18ManagementField(item);
 
   const cleanTitle = useMemo(() => {
-    let t = decodeHtmlEntities(item.title || '');
-    if (t.includes('<img')) {
-      const match = t.match(/alt=["']([^"']+)["']/i);
-      if (match && match[1] && !match[1].includes('Ảnh có sử dụng')) {
-        t = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
-      } else {
-        t = item.snippet?.substring(0, 100) || 'Tin tức nghiệp vụ Bộ Tài chính';
-      }
-    }
-    return t.replace(/<[^>]+>/g, '').trim();
+    return cleanHtmlTitle(item.title, item.snippet);
   }, [item.title, item.snippet]);
 
   const cleanSummary = useMemo(() => {
@@ -486,7 +477,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                     : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                 }`}
               >
-                Gemini AI
+                Tham khảo AI
               </span>
             </div>
           </div>
@@ -1996,15 +1987,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 
                       {/* Quick Action Buttons for Leadership */}
                       <div className="pt-2.5 mt-2.5 border-t border-emerald-200 dark:border-emerald-800/80 flex items-center justify-end gap-2 flex-wrap">
-                        {onPolicySubmission && (
-                          <button
-                            onClick={() => onPolicySubmission(item)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition shadow-xs cursor-pointer"
-                          >
-                            <FileCheck2 className="w-3.5 h-3.5" />
-                            <span>Lập Tờ trình Tham mưu giải quyết</span>
-                          </button>
-                        )}
                         {onDraftStatement && (
                           <button
                             onClick={() => onDraftStatement(item)}
@@ -2734,18 +2716,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({
             <Sparkles className={"w-3.5 h-3.5 " + (isDark ? "text-cyan-400" : "text-sky-600")} />
             <span>Phân tích sâu & 6W</span>
           </button>
-
-          {/* Policy Advisory Submission Modal Trigger */}
-          {onPolicySubmission && (
-            <button
-              onClick={() => onPolicySubmission(item)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer bg-amber-600 hover:bg-amber-500 text-white"
-              title="Lập Tờ trình Báo cáo Tham mưu Chính sách gửi Lãnh đạo Bộ"
-            >
-              <FileCheck2 className="w-3.5 h-3.5" />
-              <span>Lập Tờ trình Tham mưu</span>
-            </button>
-          )}
 
           {/* Draft Statement Modal Trigger for Leadership */}
           {onDraftStatement && (

@@ -5,12 +5,12 @@ export interface AdvisorChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
-  suggestedAction?: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null;
+  suggestedAction?: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public' | null;
   actionLabel?: string;
   isStreaming?: boolean;
   isError?: boolean;
   retryPrompt?: string;
-  retryActionHint?: 'draft_statement' | 'policy_submission' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public';
+  retryActionHint?: 'draft_statement' | 'deep_dive' | 'trigger_config' | 'gmail_alert' | 'smart_filter_policy' | 'smart_filter_public';
   cotBreakdown?: {
     jurisdiction?: string;
     fiscalVsPublic?: string;

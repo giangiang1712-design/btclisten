@@ -83,7 +83,7 @@ export const AutoActionProposer: React.FC<AutoActionProposerProps> = ({
       }
     } catch (err: any) {
       console.warn('Gemini Auto Action Error:', err);
-      setGenerationError(err.message || 'Lỗi khi kết nối Gemini AI');
+      setGenerationError(err.message || 'Lỗi khi kết nối Tham khảo AI');
     } finally {
       setIsLoadingAi(false);
     }
@@ -187,15 +187,15 @@ export const AutoActionProposer: React.FC<AutoActionProposerProps> = ({
                 ? (isDark ? 'bg-indigo-600/30 text-indigo-200 border-indigo-400/50 hover:bg-indigo-600/50' : 'bg-indigo-100 text-indigo-900 border-indigo-300 hover:bg-indigo-200')
                 : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white border-transparent'
             } ${isLoadingAi ? 'opacity-70 cursor-wait' : ''}`}
-            title={isVietnamese ? "Gọi Gemini 3.8 sinh 3 hành động tham mưu riêng biệt cho bài viết" : "Generate 3 context-specific actions using Gemini AI"}
+            title="Tham khảo AI"
           >
             <Sparkles className={`w-3.5 h-3.5 ${isLoadingAi ? 'animate-spin text-amber-300' : 'text-amber-300'}`} />
             <span className="hidden sm:inline">
               {isLoadingAi
-                ? (isVietnamese ? 'Gemini đang phân tích...' : 'Gemini analyzing...')
+                ? 'AI đang phân tích...'
                 : isAiGenerated
-                ? (isVietnamese ? 'Làm mới với Gemini' : 'Regen Gemini')
-                : (isVietnamese ? 'Sinh bằng Gemini AI' : 'Generate with Gemini')}
+                ? 'Làm mới Tham khảo AI'
+                : 'Tham khảo AI'}
             </span>
           </button>
 
@@ -247,13 +247,11 @@ export const AutoActionProposer: React.FC<AutoActionProposerProps> = ({
               <div className="flex items-center gap-1.5 min-w-0">
                 <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span className="truncate">
-                  {isVietnamese
-                    ? '✨ 03 Hành động tham mưu đã được Gemini 3.8 Flash phân tích và khởi tạo chuyên biệt theo bài viết!'
-                    : '✨ 3 Leadership actions tailored specifically to this article by Gemini 3.8 Flash!'}
+                  ✨ 03 Hành động tham mưu đã được Tham khảo AI phân tích và khởi tạo chuyên biệt theo bài viết!
                 </span>
               </div>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 shrink-0">
-                Gemini AI Real-time
+                Tham khảo AI
               </span>
             </div>
           )}
